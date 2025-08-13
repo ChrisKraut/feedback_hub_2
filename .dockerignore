@@ -1,0 +1,15 @@
+.git
+.gitignore
+.cursor
+.vscode
+node_modules
+dist
+bin
+.env
+docs
+README.md
+readme.md
+Makefile
+Dockerfile*
+
+
