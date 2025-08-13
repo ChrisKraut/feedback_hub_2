@@ -1,7 +1,13 @@
 .env
 docs
-api
 bin/
 cmd/api/api
+*.exe
+*.dll
+*.so
+*.dylib
+# Ignore binary executables at root level but allow api/ directory
+/api
+!api/
 
 
