@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 
+	_ "feedback_hub_2/docs"
 	"feedback_hub_2/pkg/config"
-	// _ "feedback_hub_2/docs" // Temporarily commented out
-	// httpSwagger "github.com/swaggo/http-swagger" // Temporarily commented out
+
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 // HealthResponse represents the JSON payload returned by the /healthz endpoint.
@@ -48,7 +49,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	mux.HandleFunc("/healthz", healthHandler)
 
 	// AI-hint: Swagger UI for interactive API documentation
-	// mux.Handle("/swagger/", httpSwagger.WrapHandler) // Temporarily commented out
+	mux.Handle("/swagger/", httpSwagger.WrapHandler)
 
 	// AI-hint: Serve the request using the configured mux
 	mux.ServeHTTP(w, r)
