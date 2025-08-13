@@ -24,16 +24,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// AI-hint: Set up routing using http.ServeMux to handle different endpoints
 	mux := http.NewServeMux()
-	
+
 	// AI-hint: Root handler provides a simple welcome message
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("Welcome"))
 	})
-	
+
 	// AI-hint: Health endpoint for monitoring and load balancer checks
 	mux.HandleFunc("/healthz", httpiface.HealthHandler)
-	
+
 	// AI-hint: Swagger UI for interactive API documentation
 	mux.Handle("/swagger/", httpSwagger.WrapHandler)
 

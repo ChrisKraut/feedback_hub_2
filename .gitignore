@@ -1,5 +1,4 @@
 .env
-docs
 bin/
 cmd/api/api
 *.exe
