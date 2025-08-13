@@ -6,9 +6,9 @@ import (
 	httpiface "feedback_hub_2/internal/interfaces/http"
 	"feedback_hub_2/pkg/config"
 
-	_ "feedback_hub_2/docs"
+	// _ "feedback_hub_2/docs" // Temporarily commented out
 
-	httpSwagger "github.com/swaggo/http-swagger"
+	// httpSwagger "github.com/swaggo/http-swagger" // Temporarily commented out
 )
 
 // Handler is the main Vercel serverless function handler.
@@ -35,7 +35,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	mux.HandleFunc("/healthz", httpiface.HealthHandler)
 
 	// AI-hint: Swagger UI for interactive API documentation
-	mux.Handle("/swagger/", httpSwagger.WrapHandler)
+	// mux.Handle("/swagger/", httpSwagger.WrapHandler) // Temporarily commented out
 
 	// AI-hint: Serve the request using the configured mux
 	mux.ServeHTTP(w, r)
