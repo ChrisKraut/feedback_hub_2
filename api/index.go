@@ -5,9 +5,7 @@ import (
 
 	httpiface "feedback_hub_2/internal/interfaces/http"
 	"feedback_hub_2/pkg/config"
-
 	// _ "feedback_hub_2/docs" // Temporarily commented out
-
 	// httpSwagger "github.com/swaggo/http-swagger" // Temporarily commented out
 )
 
