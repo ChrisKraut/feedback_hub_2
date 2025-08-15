@@ -17,6 +17,7 @@ import (
 
 	_ "feedback_hub_2/docs"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
@@ -60,7 +61,16 @@ func (s *Server) Initialize(ctx context.Context) error {
 
 	// Create database connection pool
 	var err error
-	s.dbPool, err = pgxpool.New(ctx, dbURL)
+	config, err := pgxpool.ParseConfig(dbURL)
+	if err != nil {
+		return fmt.Errorf("failed to parse database config: %w", err)
+	}
+
+	// Disable prepared statement caching for serverless environments
+	// This prevents "prepared statement already exists" errors
+	config.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeExec
+
+	s.dbPool, err = pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		return err
 	}
