@@ -268,6 +268,27 @@ func TestCreateFeature_ValidationError(t *testing.T) { ... }
 func TestCreateFeature_DatabaseError(t *testing.T) { ... }
 ```
 
+## Database Migrations
+
+### **Auto-Migration System**
+This project includes an automatic database migration system that:
+- **Detects missing tables** and creates them automatically
+- **Runs on application startup** via `EnsureSchema()` function
+- **Handles both new databases** and existing ones
+- **No manual migration scripts needed** for production
+
+### **How to Add New Tables:**
+1. **Update `EnsureSchema()`** in `internal/infrastructure/persistence/postgres_repository.go`
+2. **Add table creation logic** for both new and existing database scenarios
+3. **Include indexes, constraints, and triggers** in the migration
+4. **Deploy the application** - migration runs automatically
+
+### **Migration Best Practices:**
+- Use `CREATE TABLE IF NOT EXISTS` for idempotency
+- Include all necessary indexes and constraints
+- Add proper error handling and logging
+- Test migrations on development database first
+
 ## Deployment
 
 ### **Pre-Deployment Checklist:**
@@ -291,7 +312,15 @@ psql -d your_database -f scripts/migrate_feature.sql
 
 ## Common Issues & Solutions
 
-### **1. Swagger Endpoint Not Visible**
+### **1. Database Migration Issues**
+**Problem**: New tables not created in production database
+**Solution**: 
+- The application has an auto-migration system in `postgres_repository.go`
+- Update the `EnsureSchema` function to include new tables
+- The system automatically detects missing tables and creates them
+- No manual migration scripts needed for production
+
+### **2. Swagger Endpoint Not Visible**
 **Problem**: Added endpoint to Go code but not visible in Swagger UI
 **Solution**: 
 - Ensure Swagger annotations are added to handler
