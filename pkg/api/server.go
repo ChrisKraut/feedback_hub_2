@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -51,8 +52,11 @@ func (s *Server) Initialize(ctx context.Context) error {
 	// Get database URL from environment
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
-		log.Fatal("DATABASE_URL environment variable is required")
+		return fmt.Errorf("DATABASE_URL environment variable is required")
 	}
+	
+	// Log database connection attempt (without exposing sensitive credentials)
+	log.Printf("Attempting database connection (URL length: %d chars)", len(dbURL))
 
 	// Create database connection pool
 	var err error

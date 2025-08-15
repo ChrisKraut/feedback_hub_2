@@ -41,7 +41,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Initialize services on first request
 	if err := initializeServices(); err != nil {
 		log.Printf("Failed to initialize services: %v", err)
-		http.Error(w, "Service initialization failed", http.StatusInternalServerError)
+		// Provide more detailed error information for debugging
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"Service initialization failed","details":"Check environment variables and database connectivity"}`))
 		return
 	}
 
