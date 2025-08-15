@@ -98,6 +98,27 @@ definitions:
       updated_at:
         type: string
     type: object
+  http.CreateIdeaRequest:
+    properties:
+      title:
+        type: string
+        description: The title of the idea
+        example: "Improve user dashboard"
+      content:
+        type: string
+        description: The detailed content of the idea
+        example: "The current dashboard could be enhanced with better data visualization and filtering options."
+    required:
+      - title
+      - content
+    type: object
+  http.CreateIdeaResponse:
+    properties:
+      id:
+        type: string
+        description: The unique identifier of the created idea
+        example: "550e8400-e29b-41d4-a716-446655440000"
+    type: object
 info:
   contact: {}
   description: API documentation for Feedback Hub with JWT authentication and role-based
@@ -636,6 +657,42 @@ paths:
       summary: Update a user's role
       tags:
       - users
+  /v1/ideas:
+    post:
+      consumes:
+      - application/json
+      description: Create a new feedback idea (authentication required)
+      parameters:
+      - description: Idea creation request
+        in: body
+        name: idea
+        required: true
+        schema:
+          $ref: '#/definitions/http.CreateIdeaRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/http.CreateIdeaResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+      security:
+      - JWTAuth: []
+      summary: Create a new idea
+      tags:
+      - ideas
 securityDefinitions:
   JWTAuth:
     description: JWT authentication via HTTP-only cookie. Use /auth/login to authenticate,
