@@ -1,5 +1,18 @@
 basePath: /
 definitions:
+  http.AuthResponse:
+    properties:
+      email:
+        type: string
+      message:
+        type: string
+      name:
+        type: string
+      role_name:
+        type: string
+      user_id:
+        type: string
+    type: object
   http.CreateRoleRequest:
     properties:
       name:
@@ -26,6 +39,22 @@ definitions:
       message:
         type: string
       status:
+        type: string
+    type: object
+  http.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  http.RegisterRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
         type: string
     type: object
   http.RoleResponse:
@@ -71,10 +100,112 @@ definitions:
     type: object
 info:
   contact: {}
-  description: API documentation for Feedback Hub with role-based access control.
+  description: API documentation for Feedback Hub with JWT authentication and role-based
+    access control.
   title: Feedback Hub API
   version: "1.0"
 paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with email and password, returns JWT in HTTP-only
+        cookie
+      parameters:
+      - description: Login credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/http.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.AuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+      summary: User login
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      description: Logout user by clearing authentication cookie
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: User logout
+      tags:
+      - auth
+  /auth/me:
+    get:
+      description: Get current authenticated user information
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.AuthResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+      security:
+      - JWTAuth: []
+      summary: Get current user
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new user with email and password
+      parameters:
+      - description: Registration details
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/http.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/http.AuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+      summary: User registration
+      tags:
+      - auth
   /healthz:
     get:
       description: Returns health status
@@ -107,7 +238,7 @@ paths:
           schema:
             $ref: '#/definitions/http.ErrorResponse'
       security:
-      - UserIDAuth: []
+      - JWTAuth: []
       summary: List all roles
       tags:
       - roles
@@ -150,7 +281,7 @@ paths:
           schema:
             $ref: '#/definitions/http.ErrorResponse'
       security:
-      - UserIDAuth: []
+      - JWTAuth: []
       summary: Create a new role
       tags:
       - roles
@@ -187,7 +318,7 @@ paths:
           schema:
             $ref: '#/definitions/http.ErrorResponse'
       security:
-      - UserIDAuth: []
+      - JWTAuth: []
       summary: Delete a role
       tags:
       - roles
@@ -219,7 +350,7 @@ paths:
           schema:
             $ref: '#/definitions/http.ErrorResponse'
       security:
-      - UserIDAuth: []
+      - JWTAuth: []
       summary: Get a role by ID
       tags:
       - roles
@@ -271,7 +402,7 @@ paths:
           schema:
             $ref: '#/definitions/http.ErrorResponse'
       security:
-      - UserIDAuth: []
+      - JWTAuth: []
       summary: Update a role
       tags:
       - roles
@@ -296,7 +427,7 @@ paths:
           schema:
             $ref: '#/definitions/http.ErrorResponse'
       security:
-      - UserIDAuth: []
+      - JWTAuth: []
       summary: List all users
       tags:
       - users
@@ -339,7 +470,7 @@ paths:
           schema:
             $ref: '#/definitions/http.ErrorResponse'
       security:
-      - UserIDAuth: []
+      - JWTAuth: []
       summary: Create a new user
       tags:
       - users
@@ -372,7 +503,7 @@ paths:
           schema:
             $ref: '#/definitions/http.ErrorResponse'
       security:
-      - UserIDAuth: []
+      - JWTAuth: []
       summary: Delete a user
       tags:
       - users
@@ -404,7 +535,7 @@ paths:
           schema:
             $ref: '#/definitions/http.ErrorResponse'
       security:
-      - UserIDAuth: []
+      - JWTAuth: []
       summary: Get a user by ID
       tags:
       - users
@@ -452,7 +583,7 @@ paths:
           schema:
             $ref: '#/definitions/http.ErrorResponse'
       security:
-      - UserIDAuth: []
+      - JWTAuth: []
       summary: Update a user
       tags:
       - users
@@ -501,15 +632,15 @@ paths:
           schema:
             $ref: '#/definitions/http.ErrorResponse'
       security:
-      - UserIDAuth: []
+      - JWTAuth: []
       summary: Update a user's role
       tags:
       - users
 securityDefinitions:
-  UserIDAuth:
-    description: Authentication via User ID header. Check application logs for the
-      Super User ID after first startup.
-    in: header
-    name: X-User-ID
+  JWTAuth:
+    description: JWT authentication via HTTP-only cookie. Use /auth/login to authenticate,
+      then the cookie will be automatically included in requests.
+    in: cookie
+    name: auth_token
     type: apiKey
 swagger: "2.0"

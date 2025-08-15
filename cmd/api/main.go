@@ -1,11 +1,11 @@
 // @title Feedback Hub API
 // @version 1.0
-// @description API documentation for Feedback Hub with role-based access control.
+// @description API documentation for Feedback Hub with JWT authentication and role-based access control.
 // @BasePath /
-// @securityDefinitions.apikey UserIDAuth
-// @in header
-// @name X-User-ID
-// @description Authentication via User ID header. Check application logs for the Super User ID after first startup.
+// @securityDefinitions.apikey JWTAuth
+// @in cookie
+// @name auth_token
+// @description JWT authentication via HTTP-only cookie. Use /auth/login to authenticate, then the cookie will be automatically included in requests.
 package main
 
 import (

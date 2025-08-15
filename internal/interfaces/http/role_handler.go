@@ -59,7 +59,7 @@ type UpdateRoleRequest struct {
 // @Failure 403 {object} ErrorResponse
 // @Failure 409 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Security UserIDAuth
+// @Security JWTAuth
 // @Router /roles [post]
 func (h *RoleHandler) CreateRole(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context (set by authentication middleware)
@@ -120,7 +120,7 @@ func (h *RoleHandler) CreateRole(w http.ResponseWriter, r *http.Request) {
 // @Failure 401 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Security UserIDAuth
+// @Security JWTAuth
 // @Router /roles/{id} [get]
 func (h *RoleHandler) GetRole(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context (set by authentication middleware)
@@ -171,7 +171,7 @@ func (h *RoleHandler) GetRole(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {array} RoleResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Security UserIDAuth
+// @Security JWTAuth
 // @Router /roles [get]
 func (h *RoleHandler) ListRoles(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context (set by authentication middleware)
@@ -220,7 +220,7 @@ func (h *RoleHandler) ListRoles(w http.ResponseWriter, r *http.Request) {
 // @Failure 404 {object} ErrorResponse
 // @Failure 409 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Security UserIDAuth
+// @Security JWTAuth
 // @Router /roles/{id} [put]
 func (h *RoleHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context (set by authentication middleware)
@@ -292,7 +292,7 @@ func (h *RoleHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 // @Failure 403 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Security UserIDAuth
+// @Security JWTAuth
 // @Router /roles/{id} [delete]
 func (h *RoleHandler) DeleteRole(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context (set by authentication middleware)

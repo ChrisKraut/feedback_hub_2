@@ -266,7 +266,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 // @Summary Get current user
 // @Description Get current authenticated user information
 // @Tags auth
-// @Security UserIDAuth
+// @Security JWTAuth
 // @Produce json
 // @Success 200 {object} AuthResponse
 // @Failure 401 {object} ErrorResponse

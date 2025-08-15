@@ -69,7 +69,7 @@ type UpdateUserRoleRequest struct {
 // @Failure 403 {object} ErrorResponse
 // @Failure 409 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Security UserIDAuth
+// @Security JWTAuth
 // @Router /users [post]
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context (set by authentication middleware)
@@ -144,7 +144,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 // @Failure 401 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Security UserIDAuth
+// @Security JWTAuth
 // @Router /users/{id} [get]
 func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context (set by authentication middleware)
@@ -197,7 +197,7 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {array} UserResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Security UserIDAuth
+// @Security JWTAuth
 // @Router /users [get]
 func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context (set by authentication middleware)
@@ -247,7 +247,7 @@ func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 // @Failure 403 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Security UserIDAuth
+// @Security JWTAuth
 // @Router /users/{id} [put]
 func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context (set by authentication middleware)
@@ -320,7 +320,7 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 // @Failure 403 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Security UserIDAuth
+// @Security JWTAuth
 // @Router /users/{id}/role [put]
 func (h *UserHandler) UpdateUserRole(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context (set by authentication middleware)
@@ -393,7 +393,7 @@ func (h *UserHandler) UpdateUserRole(w http.ResponseWriter, r *http.Request) {
 // @Failure 403 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Security UserIDAuth
+// @Security JWTAuth
 // @Router /users/{id} [delete]
 func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context (set by authentication middleware)

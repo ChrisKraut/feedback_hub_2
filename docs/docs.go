@@ -15,6 +15,161 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/auth/login": {
+            "post": {
+                "description": "Authenticate user with email and password, returns JWT in HTTP-only cookie",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "User login",
+                "parameters": [
+                    {
+                        "description": "Login credentials",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/http.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.AuthResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "description": "Logout user by clearing authentication cookie",
+                "tags": [
+                    "auth"
+                ],
+                "summary": "User logout",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/me": {
+            "get": {
+                "security": [
+                    {
+                        "JWTAuth": []
+                    }
+                ],
+                "description": "Get current authenticated user information",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Get current user",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.AuthResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/register": {
+            "post": {
+                "description": "Register a new user with email and password",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "User registration",
+                "parameters": [
+                    {
+                        "description": "Registration details",
+                        "name": "user",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/http.RegisterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/http.AuthResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/healthz": {
             "get": {
                 "description": "Returns health status",
@@ -36,7 +191,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "UserIDAuth": []
+                        "JWTAuth": []
                     }
                 ],
                 "description": "Get all roles in the system",
@@ -74,7 +229,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "UserIDAuth": []
+                        "JWTAuth": []
                     }
                 ],
                 "description": "Create a new role (Super User only)",
@@ -143,7 +298,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "UserIDAuth": []
+                        "JWTAuth": []
                     }
                 ],
                 "description": "Get a role by its ID",
@@ -193,7 +348,7 @@ const docTemplate = `{
             "put": {
                 "security": [
                     {
-                        "UserIDAuth": []
+                        "JWTAuth": []
                     }
                 ],
                 "description": "Update a role's name (Super User only)",
@@ -273,7 +428,7 @@ const docTemplate = `{
             "delete": {
                 "security": [
                     {
-                        "UserIDAuth": []
+                        "JWTAuth": []
                     }
                 ],
                 "description": "Delete a role (Super User only, cannot delete Super User role)",
@@ -331,7 +486,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "UserIDAuth": []
+                        "JWTAuth": []
                     }
                 ],
                 "description": "Get all users in the system",
@@ -369,7 +524,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "UserIDAuth": []
+                        "JWTAuth": []
                     }
                 ],
                 "description": "Create a new user with role assignment (authorization rules apply)",
@@ -438,7 +593,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "UserIDAuth": []
+                        "JWTAuth": []
                     }
                 ],
                 "description": "Get a user by their ID",
@@ -488,7 +643,7 @@ const docTemplate = `{
             "put": {
                 "security": [
                     {
-                        "UserIDAuth": []
+                        "JWTAuth": []
                     }
                 ],
                 "description": "Update a user's name (email is immutable)",
@@ -562,7 +717,7 @@ const docTemplate = `{
             "delete": {
                 "security": [
                     {
-                        "UserIDAuth": []
+                        "JWTAuth": []
                     }
                 ],
                 "description": "Delete a user (authorization rules apply)",
@@ -614,7 +769,7 @@ const docTemplate = `{
             "put": {
                 "security": [
                     {
-                        "UserIDAuth": []
+                        "JWTAuth": []
                     }
                 ],
                 "description": "Update a user's role (Super User only)",
@@ -688,6 +843,26 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "http.AuthResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "role_name": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
         "http.CreateRoleRequest": {
             "type": "object",
             "properties": {
@@ -728,6 +903,31 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "http.LoginRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "http.RegisterRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
                     "type": "string"
                 }
             }
@@ -798,11 +998,11 @@ const docTemplate = `{
         }
     },
     "securityDefinitions": {
-        "UserIDAuth": {
-            "description": "Authentication via User ID header. Check application logs for the Super User ID after first startup.",
+        "JWTAuth": {
+            "description": "JWT authentication via HTTP-only cookie. Use /auth/login to authenticate, then the cookie will be automatically included in requests.",
             "type": "apiKey",
-            "name": "X-User-ID",
-            "in": "header"
+            "name": "auth_token",
+            "in": "cookie"
         }
     }
 }`
@@ -814,7 +1014,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Feedback Hub API",
-	Description:      "API documentation for Feedback Hub with role-based access control.",
+	Description:      "API documentation for Feedback Hub with JWT authentication and role-based access control.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",
