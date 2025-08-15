@@ -38,7 +38,7 @@ type CreateIdeaResponse struct {
 	ID string `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
 }
 
-// CreateIdea handles POST /v1/ideas requests.
+// CreateIdea handles POST /ideas requests.
 // AI-hint: Idea creation endpoint with authentication, validation, and proper error handling.
 //
 // @Summary Create a new idea
@@ -52,7 +52,7 @@ type CreateIdeaResponse struct {
 // @Failure 401 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Security JWTAuth
-// @Router /v1/ideas [post]
+// @Router /ideas [post]
 func (h *IdeaHandler) CreateIdea(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context (set by authentication middleware)
 	userID := getUserIDFromContext(r.Context())

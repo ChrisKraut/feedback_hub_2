@@ -233,6 +233,42 @@ paths:
       summary: Health check
       tags:
       - health
+  /ideas:
+    post:
+      consumes:
+      - application/json
+      description: Create a new feedback idea (authentication required)
+      parameters:
+      - description: Idea creation request
+        in: body
+        name: idea
+        required: true
+        schema:
+          $ref: '#/definitions/http.CreateIdeaRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/http.CreateIdeaResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+      security:
+      - JWTAuth: []
+      summary: Create a new idea
+      tags:
+      - ideas
   /roles:
     get:
       description: Get all roles in the system
@@ -652,42 +688,6 @@ paths:
       summary: Update a user's role
       tags:
       - users
-  /v1/ideas:
-    post:
-      consumes:
-      - application/json
-      description: Create a new feedback idea (authentication required)
-      parameters:
-      - description: Idea creation request
-        in: body
-        name: idea
-        required: true
-        schema:
-          $ref: '#/definitions/http.CreateIdeaRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/http.CreateIdeaResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/http.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/http.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/http.ErrorResponse'
-      security:
-      - JWTAuth: []
-      summary: Create a new idea
-      tags:
-      - ideas
 securityDefinitions:
   JWTAuth:
     description: JWT authentication via HTTP-only cookie. Use /auth/login to authenticate,

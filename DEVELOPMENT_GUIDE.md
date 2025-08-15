@@ -63,7 +63,7 @@ Domain Model → Repository → Application Service → HTTP Handler → Tests �
 
 1. **Add annotations to your HTTP handler:**
 ```go
-// CreateIdea handles POST /v1/ideas requests.
+// CreateIdea handles POST /ideas requests.
 // AI-hint: Idea creation endpoint with authentication, validation, and proper error handling.
 //
 // @Summary Create a new idea
@@ -77,7 +77,7 @@ Domain Model → Repository → Application Service → HTTP Handler → Tests �
 // @Failure 401 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Security JWTAuth
-// @Router /v1/ideas [post]
+// @Router /ideas [post]
 func (h *IdeaHandler) CreateIdea(w http.ResponseWriter, r *http.Request) {
     // ... implementation
 }
@@ -232,7 +232,7 @@ featureService := application.NewFeatureApplicationService(featureRepo, userRepo
 featureHandler := http.NewFeatureHandler(featureService)
 
 // Add routes
-mux.HandleFunc("/v1/features", featureHandler.CreateFeature)
+mux.HandleFunc("/features", featureHandler.CreateFeature)
 ```
 
 #### 8. **Regenerate Swagger Documentation**

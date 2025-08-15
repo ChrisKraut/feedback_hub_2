@@ -257,7 +257,7 @@ func (s *Server) Handler() http.Handler {
 	}))
 
 	// AI-hint: Ideas management routes (authenticated)
-	mux.HandleFunc("/v1/ideas", s.authMiddleware.RequireAuthFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/ideas", s.authMiddleware.RequireAuthFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
 			s.ideaHandler.CreateIdea(w, r)
