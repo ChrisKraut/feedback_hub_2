@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"feedback_hub_2/pkg/api"
@@ -18,6 +19,9 @@ var (
 // initializeServices sets up database connection and services once per cold start
 // AI-hint: One-time initialization for serverless environment to reuse connections
 func initializeServices() error {
+	// Log VERCEL_ENV to check if any env vars are being read
+	log.Printf("VERCEL_ENV: %s", os.Getenv("VERCEL_ENV"))
+
 	if initOnce {
 		return nil
 	}
