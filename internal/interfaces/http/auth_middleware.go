@@ -2,41 +2,49 @@ package http
 
 import (
 	"feedback_hub_2/internal/application"
+	"feedback_hub_2/internal/infrastructure/auth"
 	"net/http"
 )
 
 // AuthMiddleware provides authentication functionality for HTTP requests.
-// AI-hint: Authentication middleware that validates user identity and adds user context.
-// In production, this would validate JWT tokens or session cookies.
+// AI-hint: JWT-based authentication middleware that validates tokens from HTTP-only cookies.
+// Provides secure authentication with proper token validation and user context.
 type AuthMiddleware struct {
 	userService *application.UserService
+	jwtService  *auth.JWTService
 }
 
 // NewAuthMiddleware creates a new AuthMiddleware instance.
-// AI-hint: Factory method for auth middleware with dependency injection of user service.
-func NewAuthMiddleware(userService *application.UserService) *AuthMiddleware {
+// AI-hint: Factory method for auth middleware with dependency injection of services.
+func NewAuthMiddleware(userService *application.UserService, jwtService *auth.JWTService) *AuthMiddleware {
 	return &AuthMiddleware{
 		userService: userService,
+		jwtService:  jwtService,
 	}
 }
 
 // RequireAuth is a middleware that requires authentication for the wrapped handler.
-// AI-hint: Authentication middleware that validates user identity from headers.
-// For simplicity, this implementation uses a "X-User-ID" header (in production, use JWT/sessions).
+// AI-hint: JWT-based authentication middleware that validates tokens from HTTP-only cookies.
 func (m *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Extract user ID from header (simplified authentication)
-		// In production, this would validate JWT tokens or session cookies
-		userID := r.Header.Get("X-User-ID")
-		if userID == "" {
+		// Get JWT token from HTTP-only cookie
+		cookie, err := r.Cookie("auth_token")
+		if err != nil {
 			writeErrorResponse(w, http.StatusUnauthorized, "Authentication required")
 			return
 		}
 
-		// Validate that the user exists
-		user, err := m.userService.GetUser(r.Context(), userID)
+		// Validate JWT token
+		claims, err := m.jwtService.ValidateToken(cookie.Value)
 		if err != nil {
-			writeErrorResponse(w, http.StatusUnauthorized, "Invalid authentication")
+			writeErrorResponse(w, http.StatusUnauthorized, "Invalid authentication token")
+			return
+		}
+
+		// Verify that the user still exists (important for user deletion/deactivation)
+		user, err := m.userService.GetUser(r.Context(), claims.UserID)
+		if err != nil {
+			writeErrorResponse(w, http.StatusUnauthorized, "User not found")
 			return
 		}
 
@@ -50,20 +58,27 @@ func (m *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 }
 
 // RequireAuthFunc is a middleware function that requires authentication for the wrapped handler function.
-// AI-hint: Function wrapper version of RequireAuth for direct handler function wrapping.
+// AI-hint: JWT-based function wrapper version of RequireAuth for direct handler function wrapping.
 func (m *AuthMiddleware) RequireAuthFunc(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Extract user ID from header (simplified authentication)
-		userID := r.Header.Get("X-User-ID")
-		if userID == "" {
+		// Get JWT token from HTTP-only cookie
+		cookie, err := r.Cookie("auth_token")
+		if err != nil {
 			writeErrorResponse(w, http.StatusUnauthorized, "Authentication required")
 			return
 		}
 
-		// Validate that the user exists
-		user, err := m.userService.GetUser(r.Context(), userID)
+		// Validate JWT token
+		claims, err := m.jwtService.ValidateToken(cookie.Value)
 		if err != nil {
-			writeErrorResponse(w, http.StatusUnauthorized, "Invalid authentication")
+			writeErrorResponse(w, http.StatusUnauthorized, "Invalid authentication token")
+			return
+		}
+
+		// Verify that the user still exists
+		user, err := m.userService.GetUser(r.Context(), claims.UserID)
+		if err != nil {
+			writeErrorResponse(w, http.StatusUnauthorized, "User not found")
 			return
 		}
 

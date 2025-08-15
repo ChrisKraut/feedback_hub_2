@@ -10,16 +10,17 @@ import (
 // AI-hint: Core domain entity containing user business logic and invariants.
 // Enforces email uniqueness, role assignment, and Super User protection rules.
 type User struct {
-	ID        string    `json:"id"`
-	Email     string    `json:"email"`
-	Name      string    `json:"name"`
-	RoleID    string    `json:"role_id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID           string    `json:"id"`
+	Email        string    `json:"email"`
+	Name         string    `json:"name"`
+	PasswordHash string    `json:"-"` // Never expose in JSON
+	RoleID       string    `json:"role_id"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
-// NewUser creates a new User with validation.
-// AI-hint: Factory method that enforces business rules during user creation.
+// NewUser creates a new User with validation (without password).
+// AI-hint: Factory method for OAuth/external auth users without passwords.
 // Validates email format and ensures required fields are present.
 func NewUser(id, email, name, roleID string) (*User, error) {
 	if id == "" {
@@ -46,6 +47,41 @@ func NewUser(id, email, name, roleID string) (*User, error) {
 		RoleID:    roleID,
 		CreatedAt: now,
 		UpdatedAt: now,
+	}, nil
+}
+
+// NewUserWithPassword creates a new User with password validation.
+// AI-hint: Factory method for users with password authentication.
+// Validates all user fields plus password hash requirement.
+func NewUserWithPassword(id, email, name, passwordHash, roleID string) (*User, error) {
+	if id == "" {
+		return nil, errors.New("user ID cannot be empty")
+	}
+	if email == "" {
+		return nil, errors.New("email cannot be empty")
+	}
+	if !isValidEmail(email) {
+		return nil, errors.New("invalid email format")
+	}
+	if name == "" {
+		return nil, errors.New("name cannot be empty")
+	}
+	if passwordHash == "" {
+		return nil, errors.New("password hash cannot be empty")
+	}
+	if roleID == "" {
+		return nil, errors.New("role ID cannot be empty")
+	}
+
+	now := time.Now()
+	return &User{
+		ID:           id,
+		Email:        strings.ToLower(strings.TrimSpace(email)),
+		Name:         strings.TrimSpace(name),
+		PasswordHash: passwordHash,
+		RoleID:       roleID,
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}, nil
 }
 

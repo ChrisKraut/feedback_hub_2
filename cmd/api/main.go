@@ -18,6 +18,7 @@ import (
 
 	"feedback_hub_2/internal/application"
 	"feedback_hub_2/internal/domain/auth"
+	authinfra "feedback_hub_2/internal/infrastructure/auth"
 	"feedback_hub_2/internal/infrastructure/persistence"
 	httpiface "feedback_hub_2/internal/interfaces/http"
 	"feedback_hub_2/pkg/config"
@@ -73,6 +74,10 @@ func main() {
 	// Create authorization service
 	authService := auth.NewAuthorizationService()
 
+	// Create authentication services
+	jwtService := authinfra.NewJWTService()
+	passwordService := authinfra.NewPasswordService()
+
 	// Create application services
 	roleService := application.NewRoleService(roleRepo, userRepo, authService)
 	userService := application.NewUserService(userRepo, roleRepo, authService)
@@ -89,9 +94,10 @@ func main() {
 	// Create HTTP handlers
 	roleHandler := httpiface.NewRoleHandler(roleService)
 	userHandler := httpiface.NewUserHandler(userService)
+	authHandler := httpiface.NewAuthHandler(userService, roleService, jwtService, passwordService)
 
 	// Create authentication middleware
-	authMiddleware := httpiface.NewAuthMiddleware(userService)
+	authMiddleware := httpiface.NewAuthMiddleware(userService, jwtService)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -106,6 +112,40 @@ func main() {
 	mux.HandleFunc("/healthz", httpiface.HealthHandler)
 	// AI-hint: Serve Swagger UI for interactive API docs at /swagger/.
 	mux.Handle("/swagger/", httpSwagger.WrapHandler)
+
+	// AI-hint: Authentication routes (no auth required for these)
+	mux.HandleFunc("/auth/login", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			authHandler.Login(w, r)
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(`{"error":"Method Not Allowed","message":"Only POST allowed"}`))
+		}
+	})
+
+	mux.HandleFunc("/auth/register", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			authHandler.Register(w, r)
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(`{"error":"Method Not Allowed","message":"Only POST allowed"}`))
+		}
+	})
+
+	mux.HandleFunc("/auth/logout", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			authHandler.Logout(w, r)
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(`{"error":"Method Not Allowed","message":"Only POST allowed"}`))
+		}
+	})
+
+	// AI-hint: Authenticated route to get current user info
+	mux.HandleFunc("/auth/me", authMiddleware.RequireAuthFunc(authHandler.Me))
 
 	// AI-hint: Role management API endpoints with authentication
 	mux.HandleFunc("/roles", authMiddleware.RequireAuthFunc(func(w http.ResponseWriter, r *http.Request) {
