@@ -7,12 +7,12 @@ import (
 	"os"
 	"time"
 
+	_ "feedback_hub_2/docs"
 	"feedback_hub_2/internal/application"
 	"feedback_hub_2/internal/domain/auth"
+	authinfra "feedback_hub_2/internal/infrastructure/auth" 
 	"feedback_hub_2/internal/infrastructure/persistence"
-	authinfra "feedback_hub_2/internal/infrastructure/auth"
-	httpiface "feedback_hub_2/internal/interfaces/http"
-	_ "feedback_hub_2/docs"
+	httphandlers "feedback_hub_2/internal/interfaces/http" 
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	httpSwagger "github.com/swaggo/http-swagger"
@@ -20,12 +20,12 @@ import (
 
 // AI-hint: Global variables for connection pooling in serverless environment
 var (
-	dbPool           *pgxpool.Pool
-	initOnce         bool
-	roleHandler      *httpiface.RoleHandler
-	userHandler      *httpiface.UserHandler
-	authHandler      *httpiface.AuthHandler
-	authMiddleware   *httpiface.AuthMiddleware
+	dbPool         *pgxpool.Pool
+	initOnce       bool
+	roleHandler    *httphandlers.RoleHandler
+	userHandler    *httphandlers.UserHandler
+	authHandler    *httphandlers.AuthHandler
+	authMiddleware *httphandlers.AuthMiddleware
 )
 
 // initializeServices sets up database connection and services once per cold start
@@ -83,12 +83,12 @@ func initializeServices() error {
 	}
 
 	// Create HTTP handlers
-	roleHandler = httpiface.NewRoleHandler(roleService)
-	userHandler = httpiface.NewUserHandler(userService)
-	authHandler = httpiface.NewAuthHandler(userService, roleService, jwtService, passwordService)
+	roleHandler = httphandlers.NewRoleHandler(roleService)
+	userHandler = httphandlers.NewUserHandler(userService)
+	authHandler = httphandlers.NewAuthHandler(userService, roleService, jwtService, passwordService)
 
 	// Create authentication middleware
-	authMiddleware = httpiface.NewAuthMiddleware(userService, jwtService)
+	authMiddleware = httphandlers.NewAuthMiddleware(userService, jwtService)
 
 	initOnce = true
 	return nil
@@ -129,7 +129,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// AI-hint: Root handler provides API information
 	mux.HandleFunc("/", rootHandler)
 	// AI-hint: Health endpoint for monitoring
-	mux.HandleFunc("/healthz", httpiface.HealthHandler)
+	mux.HandleFunc("/healthz", httphandlers.HealthHandler)
 	// AI-hint: Swagger UI for API documentation
 	mux.Handle("/swagger/", httpSwagger.WrapHandler)
 
