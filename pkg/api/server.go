@@ -54,9 +54,9 @@ func (s *Server) Initialize(ctx context.Context) error {
 	if dbURL == "" {
 		return fmt.Errorf("DATABASE_URL environment variable is required")
 	}
-	
+
 	// Log database connection attempt (without exposing sensitive credentials)
-	log.Printf("Attempting database connection (URL length: %d chars)", len(dbURL))
+	log.Printf("Attempting database connection (URL length: %d chars, first 10: %s)", len(dbURL), dbURL[:min(10, len(dbURL))])
 
 	// Create database connection pool
 	var err error
@@ -244,4 +244,12 @@ func (s *Server) Handler() http.Handler {
 
 	// AI-hint: Apply CORS middleware to enable cross-origin requests
 	return httpiface.CORS(mux)
+}
+
+// min returns the smaller of two integers.
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
