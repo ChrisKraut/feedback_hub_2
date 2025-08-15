@@ -13,6 +13,22 @@ definitions:
       user_id:
         type: string
     type: object
+  http.CreateIdeaRequest:
+    properties:
+      content:
+        example: The current dashboard could be enhanced with better data visualization
+          and filtering options.
+        type: string
+      title:
+        example: Improve user dashboard
+        type: string
+    type: object
+  http.CreateIdeaResponse:
+    properties:
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    type: object
   http.CreateRoleRequest:
     properties:
       name:
@@ -97,27 +113,6 @@ definitions:
         type: string
       updated_at:
         type: string
-    type: object
-  http.CreateIdeaRequest:
-    properties:
-      title:
-        type: string
-        description: The title of the idea
-        example: "Improve user dashboard"
-      content:
-        type: string
-        description: The detailed content of the idea
-        example: "The current dashboard could be enhanced with better data visualization and filtering options."
-    required:
-      - title
-      - content
-    type: object
-  http.CreateIdeaResponse:
-    properties:
-      id:
-        type: string
-        description: The unique identifier of the created idea
-        example: "550e8400-e29b-41d4-a716-446655440000"
     type: object
 info:
   contact: {}

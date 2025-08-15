@@ -836,13 +836,22 @@
         },
         "/v1/ideas": {
             "post": {
+                "security": [
+                    {
+                        "JWTAuth": []
+                    }
+                ],
+                "description": "Create a new feedback idea (authentication required)",
                 "consumes": [
                     "application/json"
                 ],
-                "description": "Create a new feedback idea (authentication required)",
                 "produces": [
                     "application/json"
                 ],
+                "tags": [
+                    "ideas"
+                ],
+                "summary": "Create a new idea",
                 "parameters": [
                     {
                         "description": "Idea creation request",
@@ -879,16 +888,7 @@
                             "$ref": "#/definitions/http.ErrorResponse"
                         }
                     }
-                },
-                "security": [
-                    {
-                        "JWTAuth": []
-                    }
-                ],
-                "summary": "Create a new idea",
-                "tags": [
-                    "ideas"
-                ]
+                }
             }
         }
     },
@@ -910,6 +910,28 @@
                 },
                 "user_id": {
                     "type": "string"
+                }
+            }
+        },
+        "http.CreateIdeaRequest": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "example": "The current dashboard could be enhanced with better data visualization and filtering options."
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Improve user dashboard"
+                }
+            }
+        },
+        "http.CreateIdeaResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
                 }
             }
         },
@@ -1043,35 +1065,6 @@
                 },
                 "updated_at": {
                     "type": "string"
-                }
-            }
-        },
-        "http.CreateIdeaRequest": {
-            "type": "object",
-            "properties": {
-                "title": {
-                    "type": "string",
-                    "description": "The title of the idea",
-                    "example": "Improve user dashboard"
-                },
-                "content": {
-                    "type": "string",
-                    "description": "The detailed content of the idea",
-                    "example": "The current dashboard could be enhanced with better data visualization and filtering options."
-                }
-            },
-            "required": [
-                "title",
-                "content"
-            ]
-        },
-        "http.CreateIdeaResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string",
-                    "description": "The unique identifier of the created idea",
-                    "example": "550e8400-e29b-41d4-a716-446655440000"
                 }
             }
         }
