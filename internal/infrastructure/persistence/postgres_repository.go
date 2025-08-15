@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -26,4 +27,76 @@ func NewPostgresPool(ctx context.Context, connectionString string) (*pgxpool.Poo
 	}
 
 	return pool, nil
+}
+
+// EnsureSchema ensures the database schema exists by running migrations.
+// AI-hint: Auto-migration function that creates required tables if they don't exist.
+// This prevents the "relation does not exist" errors on fresh databases.
+func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
+	log.Println("Ensuring database schema exists...")
+
+	// Check if roles table exists
+	var exists bool
+	err := pool.QueryRow(ctx, "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'roles')").Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("failed to check if roles table exists: %w", err)
+	}
+
+	if exists {
+		log.Println("Database schema already exists, skipping migration")
+		return nil
+	}
+
+	log.Println("Creating database schema...")
+
+	// Enable UUID extension
+	_, err = pool.Exec(ctx, `CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`)
+	if err != nil {
+		return fmt.Errorf("failed to create uuid extension: %w", err)
+	}
+
+	// Create roles table
+	_, err = pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS roles (
+			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+			name VARCHAR(100) NOT NULL UNIQUE,
+			created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create roles table: %w", err)
+	}
+
+	// Create users table
+	_, err = pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS users (
+			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+			email VARCHAR(255) NOT NULL UNIQUE,
+			name VARCHAR(255) NOT NULL,
+			role_id UUID NOT NULL REFERENCES roles(id) ON DELETE RESTRICT,
+			created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create users table: %w", err)
+	}
+
+	// Create indexes
+	indexes := []string{
+		`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`,
+		`CREATE INDEX IF NOT EXISTS idx_users_role_id ON users(role_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_roles_name ON roles(name)`,
+	}
+
+	for _, indexSQL := range indexes {
+		_, err = pool.Exec(ctx, indexSQL)
+		if err != nil {
+			return fmt.Errorf("failed to create index: %w", err)
+		}
+	}
+
+	log.Println("Database schema created successfully")
+	return nil
 }
