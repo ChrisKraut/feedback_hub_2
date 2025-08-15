@@ -35,9 +35,16 @@ func NewPostgresPool(ctx context.Context, connectionString string) (*pgxpool.Poo
 func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 	log.Println("Ensuring database schema exists...")
 
+	// Acquire a connection from the pool for schema operations
+	conn, err := pool.Acquire(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to acquire database connection for schema check: %w", err)
+	}
+	defer conn.Release()
+
 	// Check if users table exists with password_hash column (indicates new schema)
 	var columnCount int
-	err := pool.QueryRow(ctx, `
+	err = conn.QueryRow(ctx, `
 		SELECT COUNT(*) 
 		FROM information_schema.columns 
 		WHERE table_schema = 'public' 
@@ -55,7 +62,7 @@ func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 
 	// Check if we need to migrate existing schema or create from scratch
 	var userTableExists int
-	err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users'").Scan(&userTableExists)
+	err = conn.QueryRow(ctx, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users'").Scan(&userTableExists)
 	if err != nil {
 		return fmt.Errorf("failed to check if users table exists: %w", err)
 	}
@@ -63,7 +70,7 @@ func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 	if userTableExists > 0 {
 		log.Println("Migrating existing schema to add password support...")
 		// Add password_hash column to existing users table
-		_, err = pool.Exec(ctx, `ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)`)
+		_, err = conn.Exec(ctx, `ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)`)
 		if err != nil {
 			return fmt.Errorf("failed to add password_hash column: %w", err)
 		}
@@ -74,13 +81,13 @@ func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 	log.Println("Creating database schema from scratch...")
 
 	// Enable UUID extension
-	_, err = pool.Exec(ctx, `CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`)
+	_, err = conn.Exec(ctx, `CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`)
 	if err != nil {
 		return fmt.Errorf("failed to create uuid extension: %w", err)
 	}
 
 	// Create roles table
-	_, err = pool.Exec(ctx, `
+	_, err = conn.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS roles (
 			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 			name VARCHAR(100) NOT NULL UNIQUE,
@@ -93,7 +100,7 @@ func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 	}
 
 	// Create users table
-	_, err = pool.Exec(ctx, `
+	_, err = conn.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS users (
 			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 			email VARCHAR(255) NOT NULL UNIQUE,
@@ -116,7 +123,7 @@ func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 	}
 
 	for _, indexSQL := range indexes {
-		_, err = pool.Exec(ctx, indexSQL)
+		_, err = conn.Exec(ctx, indexSQL)
 		if err != nil {
 			return fmt.Errorf("failed to create index: %w", err)
 		}
