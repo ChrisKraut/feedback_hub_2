@@ -833,6 +833,63 @@
                     }
                 }
             }
+        },
+        "/v1/ideas": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "description": "Create a new feedback idea (authentication required)",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "description": "Idea creation request",
+                        "name": "idea",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/http.CreateIdeaRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/http.CreateIdeaResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "JWTAuth": []
+                    }
+                ],
+                "summary": "Create a new idea",
+                "tags": [
+                    "ideas"
+                ]
+            }
         }
     },
     "definitions": {
@@ -986,6 +1043,35 @@
                 },
                 "updated_at": {
                     "type": "string"
+                }
+            }
+        },
+        "http.CreateIdeaRequest": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "description": "The title of the idea",
+                    "example": "Improve user dashboard"
+                },
+                "content": {
+                    "type": "string",
+                    "description": "The detailed content of the idea",
+                    "example": "The current dashboard could be enhanced with better data visualization and filtering options."
+                }
+            },
+            "required": [
+                "title",
+                "content"
+            ]
+        },
+        "http.CreateIdeaResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "The unique identifier of the created idea",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
                 }
             }
         }
