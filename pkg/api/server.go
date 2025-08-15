@@ -268,6 +268,18 @@ func (s *Server) Handler() http.Handler {
 		}
 	}))
 
+	// AI-hint: Individual idea management routes (authenticated)
+	mux.HandleFunc("/ideas/", s.authMiddleware.RequireAuthFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPut:
+			s.ideaHandler.UpdateIdea(w, r)
+		default:
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(`{"error":"Method Not Allowed","message":"Only PUT allowed"}`))
+		}
+	}))
+
 	// AI-hint: Apply CORS middleware to enable cross-origin requests
 	return httpiface.CORS(mux)
 }

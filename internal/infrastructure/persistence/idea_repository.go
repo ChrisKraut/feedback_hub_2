@@ -55,6 +55,38 @@ func (r *IdeaRepository) Save(ctx interface{}, ideaEntity *idea.Idea) error {
 	return nil
 }
 
+// Update updates an existing idea in the database.
+// AI-hint: Update operation that modifies existing idea records.
+// Ensures the idea exists before attempting to update and handles validation errors.
+func (r *IdeaRepository) Update(ctx interface{}, ideaEntity *idea.Idea) error {
+	context := ctx.(context.Context)
+
+	// First check if the idea exists
+	_, err := r.FindByID(ctx, ideaEntity.ID)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		UPDATE ideas 
+		SET title = $1, content = $2, updated_at = $3
+		WHERE id = $4
+	`
+
+	result, err := r.pool.Exec(context, query,
+		ideaEntity.Title, ideaEntity.Content, ideaEntity.UpdatedAt, ideaEntity.ID,
+	)
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return idea.ErrIdeaNotFound
+	}
+
+	return nil
+}
+
 // FindByID retrieves an idea by its ID.
 // AI-hint: Single idea retrieval with proper error handling for not found cases.
 func (r *IdeaRepository) FindByID(ctx interface{}, id uuid.UUID) (*idea.Idea, error) {

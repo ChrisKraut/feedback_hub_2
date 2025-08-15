@@ -84,6 +84,16 @@ definitions:
       updated_at:
         type: string
     type: object
+  http.UpdateIdeaRequest:
+    properties:
+      content:
+        example: The dashboard has been enhanced with better data visualization and
+          filtering options.
+        type: string
+      title:
+        example: Improved user dashboard
+        type: string
+    type: object
   http.UpdateRoleRequest:
     properties:
       name:
@@ -267,6 +277,58 @@ paths:
       security:
       - JWTAuth: []
       summary: Create a new idea
+      tags:
+      - ideas
+  /ideas/{ideaId}:
+    put:
+      consumes:
+      - application/json
+      description: Update the title and content of an existing feedback idea (authentication
+        required, creator only)
+      parameters:
+      - description: Idea ID
+        format: uuid
+        in: path
+        name: ideaId
+        required: true
+        type: string
+      - description: Idea update request
+        in: body
+        name: idea
+        required: true
+        schema:
+          $ref: '#/definitions/http.UpdateIdeaRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+      security:
+      - JWTAuth: []
+      summary: Update an existing idea
       tags:
       - ideas
   /roles:

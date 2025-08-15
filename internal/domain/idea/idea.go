@@ -123,6 +123,7 @@ type Repository interface {
 	FindByID(ctx interface{}, id uuid.UUID) (*Idea, error)
 	FindByCreatorUserID(ctx interface{}, creatorUserID uuid.UUID) ([]*Idea, error)
 	FindAll(ctx interface{}) ([]*Idea, error)
+	Update(ctx interface{}, idea *Idea) error
 	Delete(ctx interface{}, id uuid.UUID) error
 }
 
