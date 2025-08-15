@@ -35,19 +35,43 @@ func NewPostgresPool(ctx context.Context, connectionString string) (*pgxpool.Poo
 func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 	log.Println("Ensuring database schema exists...")
 
-	// Check if roles table exists
-	var exists bool
-	err := pool.QueryRow(ctx, "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'roles')").Scan(&exists)
+	// Check if users table exists with password_hash column (indicates new schema)
+	var columnCount int
+	err := pool.QueryRow(ctx, `
+		SELECT COUNT(*) 
+		FROM information_schema.columns 
+		WHERE table_schema = 'public' 
+		AND table_name = 'users' 
+		AND column_name = 'password_hash'
+	`).Scan(&columnCount)
 	if err != nil {
-		return fmt.Errorf("failed to check if roles table exists: %w", err)
+		return fmt.Errorf("failed to check schema version: %w", err)
 	}
 
-	if exists {
-		log.Println("Database schema already exists, skipping migration")
+	if columnCount > 0 {
+		log.Println("Database schema is up to date, skipping migration")
 		return nil
 	}
 
-	log.Println("Creating database schema...")
+	// Check if we need to migrate existing schema or create from scratch
+	var userTableExists int
+	err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users'").Scan(&userTableExists)
+	if err != nil {
+		return fmt.Errorf("failed to check if users table exists: %w", err)
+	}
+
+	if userTableExists > 0 {
+		log.Println("Migrating existing schema to add password support...")
+		// Add password_hash column to existing users table
+		_, err = pool.Exec(ctx, `ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)`)
+		if err != nil {
+			return fmt.Errorf("failed to add password_hash column: %w", err)
+		}
+		log.Println("Schema migration completed successfully")
+		return nil
+	}
+
+	log.Println("Creating database schema from scratch...")
 
 	// Enable UUID extension
 	_, err = pool.Exec(ctx, `CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`)
@@ -74,6 +98,7 @@ func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 			email VARCHAR(255) NOT NULL UNIQUE,
 			name VARCHAR(255) NOT NULL,
+			password_hash VARCHAR(255), -- Optional for OAuth users
 			role_id UUID NOT NULL REFERENCES roles(id) ON DELETE RESTRICT,
 			created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 			updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()

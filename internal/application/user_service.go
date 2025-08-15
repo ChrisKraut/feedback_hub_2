@@ -251,6 +251,33 @@ func (s *UserService) CreateSuperUser(ctx interface{}, email, name string) (*use
 	return newUser, nil
 }
 
+// CreateUserWithPassword creates a user with password authentication.
+// AI-hint: User creation method for password-based authentication with proper validation.
+func (s *UserService) CreateUserWithPassword(ctx interface{}, userID, email, name, passwordHash, roleID string) (*user.User, error) {
+	context := ctx.(context.Context)
+
+	// Check if email already exists
+	existingUser, err := s.userRepo.GetByEmail(context, email)
+	if err == nil && existingUser != nil {
+		return nil, user.ErrEmailAlreadyExists
+	}
+	if err != user.ErrUserNotFound {
+		return nil, err
+	}
+
+	// Create user with password
+	newUser, err := user.NewUserWithPassword(userID, email, name, passwordHash, roleID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.userRepo.Create(context, newUser); err != nil {
+		return nil, err
+	}
+
+	return newUser, nil
+}
+
 // getUserContext retrieves the user context for authorization.
 // AI-hint: Helper method to build authorization context from user ID.
 func (s *UserService) getUserContext(ctx context.Context, userID string) (*auth.UserContext, error) {

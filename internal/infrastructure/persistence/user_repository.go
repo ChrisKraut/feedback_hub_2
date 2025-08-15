@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"feedback_hub_2/internal/domain/user"
 
@@ -30,12 +31,19 @@ func (r *UserRepository) Create(ctx interface{}, userEntity *user.User) error {
 	context := ctx.(context.Context)
 
 	query := `
-		INSERT INTO users (id, email, name, role_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO users (id, email, name, password_hash, role_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
 
+	var passwordHash interface{}
+	if userEntity.PasswordHash == "" {
+		passwordHash = nil
+	} else {
+		passwordHash = userEntity.PasswordHash
+	}
+
 	_, err := r.pool.Exec(context, query,
-		userEntity.ID, userEntity.Email, userEntity.Name, userEntity.RoleID,
+		userEntity.ID, userEntity.Email, userEntity.Name, passwordHash, userEntity.RoleID,
 		userEntity.CreatedAt, userEntity.UpdatedAt,
 	)
 	if err != nil {
@@ -59,20 +67,25 @@ func (r *UserRepository) GetByID(ctx interface{}, id string) (*user.User, error)
 	context := ctx.(context.Context)
 
 	query := `
-		SELECT id, email, name, role_id, created_at, updated_at
+		SELECT id, email, name, password_hash, role_id, created_at, updated_at
 		FROM users
 		WHERE id = $1
 	`
 
 	var userEntity user.User
+	var passwordHash sql.NullString
 	err := r.pool.QueryRow(context, query, id).Scan(
 		&userEntity.ID,
 		&userEntity.Email,
 		&userEntity.Name,
+		&passwordHash,
 		&userEntity.RoleID,
 		&userEntity.CreatedAt,
 		&userEntity.UpdatedAt,
 	)
+	if passwordHash.Valid {
+		userEntity.PasswordHash = passwordHash.String
+	}
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -90,20 +103,25 @@ func (r *UserRepository) GetByEmail(ctx interface{}, email string) (*user.User, 
 	context := ctx.(context.Context)
 
 	query := `
-		SELECT id, email, name, role_id, created_at, updated_at
+		SELECT id, email, name, password_hash, role_id, created_at, updated_at
 		FROM users
 		WHERE email = $1
 	`
 
 	var userEntity user.User
+	var passwordHash sql.NullString
 	err := r.pool.QueryRow(context, query, email).Scan(
 		&userEntity.ID,
 		&userEntity.Email,
 		&userEntity.Name,
+		&passwordHash,
 		&userEntity.RoleID,
 		&userEntity.CreatedAt,
 		&userEntity.UpdatedAt,
 	)
+	if passwordHash.Valid {
+		userEntity.PasswordHash = passwordHash.String
+	}
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -122,12 +140,19 @@ func (r *UserRepository) Update(ctx interface{}, userEntity *user.User) error {
 
 	query := `
 		UPDATE users
-		SET email = $2, name = $3, role_id = $4, updated_at = $5
+		SET email = $2, name = $3, password_hash = $4, role_id = $5, updated_at = $6
 		WHERE id = $1
 	`
 
+	var passwordHash interface{}
+	if userEntity.PasswordHash == "" {
+		passwordHash = nil
+	} else {
+		passwordHash = userEntity.PasswordHash
+	}
+
 	result, err := r.pool.Exec(context, query,
-		userEntity.ID, userEntity.Email, userEntity.Name, userEntity.RoleID, userEntity.UpdatedAt,
+		userEntity.ID, userEntity.Email, userEntity.Name, passwordHash, userEntity.RoleID, userEntity.UpdatedAt,
 	)
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -171,7 +196,7 @@ func (r *UserRepository) List(ctx interface{}) ([]*user.User, error) {
 	context := ctx.(context.Context)
 
 	query := `
-		SELECT id, email, name, role_id, created_at, updated_at
+		SELECT id, email, name, password_hash, role_id, created_at, updated_at
 		FROM users
 		ORDER BY email
 	`
@@ -185,16 +210,21 @@ func (r *UserRepository) List(ctx interface{}) ([]*user.User, error) {
 	var users []*user.User
 	for rows.Next() {
 		var userEntity user.User
+		var passwordHash sql.NullString
 		err := rows.Scan(
 			&userEntity.ID,
 			&userEntity.Email,
 			&userEntity.Name,
+			&passwordHash,
 			&userEntity.RoleID,
 			&userEntity.CreatedAt,
 			&userEntity.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err
+		}
+		if passwordHash.Valid {
+			userEntity.PasswordHash = passwordHash.String
 		}
 		users = append(users, &userEntity)
 	}
@@ -212,7 +242,7 @@ func (r *UserRepository) GetByRoleID(ctx interface{}, roleID string) ([]*user.Us
 	context := ctx.(context.Context)
 
 	query := `
-		SELECT id, email, name, role_id, created_at, updated_at
+		SELECT id, email, name, password_hash, role_id, created_at, updated_at
 		FROM users
 		WHERE role_id = $1
 		ORDER BY email
@@ -227,16 +257,21 @@ func (r *UserRepository) GetByRoleID(ctx interface{}, roleID string) ([]*user.Us
 	var users []*user.User
 	for rows.Next() {
 		var userEntity user.User
+		var passwordHash sql.NullString
 		err := rows.Scan(
 			&userEntity.ID,
 			&userEntity.Email,
 			&userEntity.Name,
+			&passwordHash,
 			&userEntity.RoleID,
 			&userEntity.CreatedAt,
 			&userEntity.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err
+		}
+		if passwordHash.Valid {
+			userEntity.PasswordHash = passwordHash.String
 		}
 		users = append(users, &userEntity)
 	}
