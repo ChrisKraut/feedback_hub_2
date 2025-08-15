@@ -9,6 +9,9 @@ cmd/
 tests/
 scripts/
 
+# Keep pkg directory for Vercel builds
+!pkg/
+
 # Documentation
 *.md
 !readme.md
