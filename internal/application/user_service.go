@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"feedback_hub_2/internal/domain/auth"
+	"feedback_hub_2/internal/domain/events"
 	"feedback_hub_2/internal/domain/role"
 	"feedback_hub_2/internal/domain/user"
 
@@ -15,19 +16,22 @@ import (
 // UserService implements the user.Service interface and coordinates user management operations.
 // AI-hint: Application service that orchestrates user business logic with authorization checks.
 // Enforces business rules about who can perform what operations on users and with which roles.
+// Uses domain events for cross-domain communication instead of direct dependencies.
 type UserService struct {
-	userRepo    user.Repository
-	roleRepo    role.Repository
-	authService *auth.AuthorizationService
+	userRepo        user.Repository
+	roleRepo        role.Repository
+	authService     *auth.AuthorizationService
+	eventPublisher  events.EventPublisher
 }
 
 // NewUserService creates a new UserService instance.
-// AI-hint: Factory method for user service with dependency injection of repositories and auth service.
-func NewUserService(userRepo user.Repository, roleRepo role.Repository, authService *auth.AuthorizationService) *UserService {
+// AI-hint: Factory method for user service with dependency injection of repositories, auth service, and event publisher.
+func NewUserService(userRepo user.Repository, roleRepo role.Repository, authService *auth.AuthorizationService, eventPublisher events.EventPublisher) *UserService {
 	return &UserService{
-		userRepo:    userRepo,
-		roleRepo:    roleRepo,
-		authService: authService,
+		userRepo:       userRepo,
+		roleRepo:       roleRepo,
+		authService:    authService,
+		eventPublisher: eventPublisher,
 	}
 }
 
@@ -77,6 +81,13 @@ func (s *UserService) CreateUser(ctx interface{}, email, name, roleID string, cr
 		return nil, err
 	}
 
+	// Publish domain event for user creation
+	userCreatedEvent := events.NewUserCreatedEvent(newUser.ID, newUser.Email, newUser.Name, newUser.RoleID, targetRole.Name)
+	if err := s.eventPublisher.PublishEvent(context, userCreatedEvent); err != nil {
+		log.Printf("Warning: failed to publish user created event: %v", err)
+		// Don't fail the operation if event publishing fails
+	}
+
 	return newUser, nil
 }
 
@@ -121,6 +132,13 @@ func (s *UserService) UpdateUser(ctx interface{}, id, name string, updatedByUser
 		return nil, err
 	}
 
+	// Publish domain event for user update
+	userUpdatedEvent := events.NewUserUpdatedEvent(existingUser.ID, existingUser.Name, 2) // Assuming version 2 for now
+	if err := s.eventPublisher.PublishEvent(context, userUpdatedEvent); err != nil {
+		log.Printf("Warning: failed to publish user updated event: %v", err)
+		// Don't fail the operation if event publishing fails
+	}
+
 	return existingUser, nil
 }
 
@@ -155,6 +173,13 @@ func (s *UserService) UpdateUserRole(ctx interface{}, id, roleID string, updated
 		return nil, err
 	}
 
+	// Store old role information for event
+	oldRoleID := existingUser.RoleID
+	oldRole, err := s.roleRepo.GetByID(context, oldRoleID)
+	if err != nil {
+		return nil, err
+	}
+
 	// Update the role
 	if err := existingUser.UpdateRole(targetRole.ID); err != nil {
 		return nil, err
@@ -163,6 +188,13 @@ func (s *UserService) UpdateUserRole(ctx interface{}, id, roleID string, updated
 	// Save the updated user
 	if err := s.userRepo.Update(context, existingUser); err != nil {
 		return nil, err
+	}
+
+	// Publish domain event for user role update
+	userRoleUpdatedEvent := events.NewUserRoleUpdatedEvent(existingUser.ID, oldRoleID, targetRole.ID, oldRole.Name, targetRole.Name, 3) // Assuming version 3 for now
+	if err := s.eventPublisher.PublishEvent(context, userRoleUpdatedEvent); err != nil {
+		log.Printf("Warning: failed to publish user role updated event: %v", err)
+		// Don't fail the operation if event publishing fails
 	}
 
 	return existingUser, nil
