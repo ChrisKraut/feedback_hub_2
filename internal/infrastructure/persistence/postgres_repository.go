@@ -56,7 +56,90 @@ func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 	}
 
 	if columnCount > 0 {
-		log.Println("Database schema is up to date, skipping migration")
+		log.Println("Basic database schema exists, checking for ideas table...")
+
+		// Check if ideas table exists
+		var ideasTableExists int
+		err = conn.QueryRow(ctx, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'ideas'").Scan(&ideasTableExists)
+		if err != nil {
+			return fmt.Errorf("failed to check if ideas table exists: %w", err)
+		}
+
+		if ideasTableExists > 0 {
+			log.Println("Database schema is up to date, skipping migration")
+			return nil
+		}
+
+		log.Println("Adding ideas table to existing schema...")
+
+		// Create ideas table
+		_, err = conn.Exec(ctx, `
+			CREATE TABLE IF NOT EXISTS ideas (
+				id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+				title VARCHAR(255) NOT NULL,
+				content TEXT NOT NULL,
+				creator_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+				created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+				updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+			)
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to create ideas table: %w", err)
+		}
+
+		// Create ideas indexes
+		ideaIndexes := []string{
+			`CREATE INDEX IF NOT EXISTS idx_ideas_creator_user_id ON ideas(creator_user_id)`,
+			`CREATE INDEX IF NOT EXISTS idx_ideas_created_at ON ideas(created_at)`,
+			`CREATE INDEX IF NOT EXISTS idx_ideas_updated_at ON ideas(updated_at)`,
+		}
+
+		for _, indexSQL := range ideaIndexes {
+			_, err = conn.Exec(ctx, indexSQL)
+			if err != nil {
+				return fmt.Errorf("failed to create idea index: %w", err)
+			}
+		}
+
+		// Add constraints to ideas table
+		constraints := []string{
+			`ALTER TABLE ideas ADD CONSTRAINT chk_ideas_title_not_empty CHECK (trim(title) != '')`,
+			`ALTER TABLE ideas ADD CONSTRAINT chk_ideas_content_not_empty CHECK (trim(content) != '')`,
+			`ALTER TABLE ideas ADD CONSTRAINT chk_ideas_title_length CHECK (length(title) <= 255)`,
+		}
+
+		for _, constraintSQL := range constraints {
+			_, err = conn.Exec(ctx, constraintSQL)
+			if err != nil {
+				return fmt.Errorf("failed to add idea constraint: %w", err)
+			}
+		}
+
+		// Create trigger function and trigger for ideas updated_at
+		_, err = conn.Exec(ctx, `
+			CREATE OR REPLACE FUNCTION update_ideas_updated_at()
+			RETURNS TRIGGER AS $$
+			BEGIN
+				NEW.updated_at = NOW();
+				RETURN NEW;
+			END;
+			$$ LANGUAGE plpgsql
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to create ideas trigger function: %w", err)
+		}
+
+		_, err = conn.Exec(ctx, `
+			CREATE TRIGGER trigger_update_ideas_updated_at
+				BEFORE UPDATE ON ideas
+				FOR EACH ROW
+				EXECUTE FUNCTION update_ideas_updated_at()
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to create ideas trigger: %w", err)
+		}
+
+		log.Println("Ideas table added to existing schema successfully")
 		return nil
 	}
 
@@ -127,6 +210,73 @@ func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 		if err != nil {
 			return fmt.Errorf("failed to create index: %w", err)
 		}
+	}
+
+	// Create ideas table
+	_, err = conn.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS ideas (
+			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+			title VARCHAR(255) NOT NULL,
+			content TEXT NOT NULL,
+			creator_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create ideas table: %w", err)
+	}
+
+	// Create ideas indexes
+	ideaIndexes := []string{
+		`CREATE INDEX IF NOT EXISTS idx_ideas_creator_user_id ON ideas(creator_user_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_ideas_created_at ON ideas(created_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_ideas_updated_at ON ideas(updated_at)`,
+	}
+
+	for _, indexSQL := range ideaIndexes {
+		_, err = conn.Exec(ctx, indexSQL)
+		if err != nil {
+			return fmt.Errorf("failed to create idea index: %w", err)
+		}
+	}
+
+	// Add constraints to ideas table
+	constraints := []string{
+		`ALTER TABLE ideas ADD CONSTRAINT chk_ideas_title_not_empty CHECK (trim(title) != '')`,
+		`ALTER TABLE ideas ADD CONSTRAINT chk_ideas_content_not_empty CHECK (trim(content) != '')`,
+		`ALTER TABLE ideas ADD CONSTRAINT chk_ideas_title_length CHECK (length(title) <= 255)`,
+	}
+
+	for _, constraintSQL := range constraints {
+		_, err = conn.Exec(ctx, constraintSQL)
+		if err != nil {
+			return fmt.Errorf("failed to add idea constraint: %w", err)
+		}
+	}
+
+	// Create trigger function and trigger for ideas updated_at
+	_, err = conn.Exec(ctx, `
+		CREATE OR REPLACE FUNCTION update_ideas_updated_at()
+		RETURNS TRIGGER AS $$
+		BEGIN
+			NEW.updated_at = NOW();
+			RETURN NEW;
+		END;
+		$$ LANGUAGE plpgsql
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create ideas trigger function: %w", err)
+	}
+
+	_, err = conn.Exec(ctx, `
+		CREATE TRIGGER trigger_update_ideas_updated_at
+			BEFORE UPDATE ON ideas
+			FOR EACH ROW
+			EXECUTE FUNCTION update_ideas_updated_at()
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create ideas trigger: %w", err)
 	}
 
 	log.Println("Database schema created successfully")

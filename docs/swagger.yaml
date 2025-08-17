@@ -13,6 +13,22 @@ definitions:
       user_id:
         type: string
     type: object
+  http.CreateIdeaRequest:
+    properties:
+      content:
+        example: The current dashboard could be enhanced with better data visualization
+          and filtering options.
+        type: string
+      title:
+        example: Improve user dashboard
+        type: string
+    type: object
+  http.CreateIdeaResponse:
+    properties:
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    type: object
   http.CreateRoleRequest:
     properties:
       name:
@@ -66,6 +82,16 @@ definitions:
       name:
         type: string
       updated_at:
+        type: string
+    type: object
+  http.UpdateIdeaRequest:
+    properties:
+      content:
+        example: The dashboard has been enhanced with better data visualization and
+          filtering options.
+        type: string
+      title:
+        example: Improved user dashboard
         type: string
     type: object
   http.UpdateRoleRequest:
@@ -217,6 +243,94 @@ paths:
       summary: Health check
       tags:
       - health
+  /ideas:
+    post:
+      consumes:
+      - application/json
+      description: Create a new feedback idea (authentication required)
+      parameters:
+      - description: Idea creation request
+        in: body
+        name: idea
+        required: true
+        schema:
+          $ref: '#/definitions/http.CreateIdeaRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/http.CreateIdeaResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+      security:
+      - JWTAuth: []
+      summary: Create a new idea
+      tags:
+      - ideas
+  /ideas/{ideaId}:
+    put:
+      consumes:
+      - application/json
+      description: Update the title and content of an existing feedback idea (authentication
+        required, creator only)
+      parameters:
+      - description: Idea ID
+        format: uuid
+        in: path
+        name: ideaId
+        required: true
+        type: string
+      - description: Idea update request
+        in: body
+        name: idea
+        required: true
+        schema:
+          $ref: '#/definitions/http.UpdateIdeaRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorResponse'
+      security:
+      - JWTAuth: []
+      summary: Update an existing idea
+      tags:
+      - ideas
   /roles:
     get:
       description: Get all roles in the system

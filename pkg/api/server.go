@@ -30,6 +30,7 @@ type Server struct {
 	dbPool         *pgxpool.Pool
 	roleHandler    *httpiface.RoleHandler
 	userHandler    *httpiface.UserHandler
+	ideaHandler    *httpiface.IdeaHandler
 	authHandler    *httpiface.AuthHandler
 	authMiddleware *httpiface.AuthMiddleware
 	initialized    bool
@@ -88,6 +89,7 @@ func (s *Server) Initialize(ctx context.Context) error {
 	// Create repositories
 	roleRepo := persistence.NewRoleRepository(s.dbPool)
 	userRepo := persistence.NewUserRepository(s.dbPool)
+	ideaRepo := persistence.NewIdeaRepository(s.dbPool)
 
 	// Create domain services
 	authService := auth.NewAuthorizationService()
@@ -99,6 +101,7 @@ func (s *Server) Initialize(ctx context.Context) error {
 	// Create application services
 	roleService := application.NewRoleService(roleRepo, userRepo, authService)
 	userService := application.NewUserService(userRepo, roleRepo, authService)
+	ideaService := application.NewIdeaApplicationService(ideaRepo, userRepo)
 
 	// Create bootstrap service and initialize system
 	bootstrapService := application.NewBootstrapService(roleService, userService)
@@ -112,6 +115,7 @@ func (s *Server) Initialize(ctx context.Context) error {
 	// Create HTTP handlers
 	s.roleHandler = httpiface.NewRoleHandler(roleService)
 	s.userHandler = httpiface.NewUserHandler(userService)
+	s.ideaHandler = httpiface.NewIdeaHandler(ideaService)
 	s.authHandler = httpiface.NewAuthHandler(userService, roleService, jwtService, passwordService)
 
 	// Create authentication middleware
@@ -249,6 +253,30 @@ func (s *Server) Handler() http.Handler {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			w.Write([]byte(`{"error":"Method Not Allowed","message":"Only GET, PUT, and DELETE allowed"}`))
+		}
+	}))
+
+	// AI-hint: Ideas management routes (authenticated)
+	mux.HandleFunc("/ideas", s.authMiddleware.RequireAuthFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			s.ideaHandler.CreateIdea(w, r)
+		default:
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(`{"error":"Method Not Allowed","message":"Only POST allowed"}`))
+		}
+	}))
+
+	// AI-hint: Individual idea management routes (authenticated)
+	mux.HandleFunc("/ideas/", s.authMiddleware.RequireAuthFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPut:
+			s.ideaHandler.UpdateIdea(w, r)
+		default:
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(`{"error":"Method Not Allowed","message":"Only PUT allowed"}`))
 		}
 	}))
 
