@@ -11,6 +11,7 @@ import (
 
 	"feedback_hub_2/internal/application"
 	"feedback_hub_2/internal/domain/auth"
+	"feedback_hub_2/internal/domain/events"
 	authinfra "feedback_hub_2/internal/infrastructure/auth"
 	"feedback_hub_2/internal/infrastructure/persistence"
 	httpiface "feedback_hub_2/internal/interfaces/http"
@@ -98,9 +99,13 @@ func (s *Server) Initialize(ctx context.Context) error {
 	jwtService := authinfra.NewJWTService()
 	passwordService := authinfra.NewPasswordService()
 
+	// Create event system
+	eventBus := events.NewInMemoryEventBus()
+	eventPublisher := events.NewEventBusPublisher(eventBus)
+
 	// Create application services
-	roleService := application.NewRoleService(roleRepo, userRepo, authService)
-	userService := application.NewUserService(userRepo, roleRepo, authService)
+	roleService := application.NewRoleService(roleRepo, userRepo, authService, eventPublisher)
+	userService := application.NewUserService(userRepo, roleRepo, authService, eventPublisher)
 	ideaService := application.NewIdeaApplicationService(ideaRepo, userRepo)
 
 	// Create bootstrap service and initialize system

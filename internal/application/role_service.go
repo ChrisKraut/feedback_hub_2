@@ -3,8 +3,10 @@ package application
 import (
 	"context"
 	"feedback_hub_2/internal/domain/auth"
+	"feedback_hub_2/internal/domain/events"
 	"feedback_hub_2/internal/domain/role"
 	"feedback_hub_2/internal/domain/user"
+	"log"
 
 	"github.com/google/uuid"
 )
@@ -12,19 +14,22 @@ import (
 // RoleService implements the role.Service interface and coordinates role management operations.
 // AI-hint: Application service that orchestrates role business logic with authorization checks.
 // Enforces business rules about who can perform what operations on roles.
+// Uses domain events for cross-domain communication instead of direct dependencies.
 type RoleService struct {
-	roleRepo    role.Repository
-	userRepo    user.Repository
-	authService *auth.AuthorizationService
+	roleRepo       role.Repository
+	userRepo       user.Repository
+	authService    *auth.AuthorizationService
+	eventPublisher events.EventPublisher
 }
 
 // NewRoleService creates a new RoleService instance.
-// AI-hint: Factory method for role service with dependency injection of repositories and auth service.
-func NewRoleService(roleRepo role.Repository, userRepo user.Repository, authService *auth.AuthorizationService) *RoleService {
+// AI-hint: Factory method for role service with dependency injection of repositories, auth service, and event publisher.
+func NewRoleService(roleRepo role.Repository, userRepo user.Repository, authService *auth.AuthorizationService, eventPublisher events.EventPublisher) *RoleService {
 	return &RoleService{
-		roleRepo:    roleRepo,
-		userRepo:    userRepo,
-		authService: authService,
+		roleRepo:       roleRepo,
+		userRepo:       userRepo,
+		authService:    authService,
+		eventPublisher: eventPublisher,
 	}
 }
 
@@ -62,6 +67,13 @@ func (s *RoleService) CreateRole(ctx interface{}, name string, createdByUserID s
 
 	if err := s.roleRepo.Create(context, newRole); err != nil {
 		return nil, err
+	}
+
+	// Publish domain event for role creation
+	roleCreatedEvent := events.NewRoleCreatedEvent(newRole.ID, newRole.Name)
+	if err := s.eventPublisher.PublishEvent(context, roleCreatedEvent); err != nil {
+		log.Printf("Warning: failed to publish role created event: %v", err)
+		// Don't fail the operation if event publishing fails
 	}
 
 	return newRole, nil
@@ -119,6 +131,13 @@ func (s *RoleService) UpdateRole(ctx interface{}, id, name string, updatedByUser
 		return nil, err
 	}
 
+	// Publish domain event for role update
+	roleUpdatedEvent := events.NewRoleUpdatedEvent(existingRole.ID, existingRole.Name, 2) // Assuming version 2 for now
+	if err := s.eventPublisher.PublishEvent(context, roleUpdatedEvent); err != nil {
+		log.Printf("Warning: failed to publish role updated event: %v", err)
+		// Don't fail the operation if event publishing fails
+	}
+
 	return existingRole, nil
 }
 
@@ -156,6 +175,13 @@ func (s *RoleService) DeleteRole(ctx interface{}, id string, deletedByUserID str
 	}
 	if len(assignedUsers) > 0 {
 		return role.ErrInvalidRoleData // Role has assigned users
+	}
+
+	// Publish domain event for role deletion
+	roleDeletedEvent := events.NewRoleDeletedEvent(existingRole.ID, existingRole.Name, 3) // Assuming version 3 for now
+	if err := s.eventPublisher.PublishEvent(context, roleDeletedEvent); err != nil {
+		log.Printf("Warning: failed to publish role deleted event: %v", err)
+		// Don't fail the operation if event publishing fails
 	}
 
 	// Delete the role
