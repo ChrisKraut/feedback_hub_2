@@ -9,12 +9,19 @@ import (
 	"strings"
 	"time"
 
-	"feedback_hub_2/internal/application"
-	"feedback_hub_2/internal/domain/auth"
-	"feedback_hub_2/internal/domain/events"
-	authinfra "feedback_hub_2/internal/infrastructure/auth"
-	"feedback_hub_2/internal/infrastructure/persistence"
-	httpiface "feedback_hub_2/internal/interfaces/http"
+	ideaapp "feedback_hub_2/internal/idea/application"
+	ideainterfaces "feedback_hub_2/internal/idea/interfaces"
+	roleapp "feedback_hub_2/internal/role/application"
+	roleinterfaces "feedback_hub_2/internal/role/interfaces"
+	"feedback_hub_2/internal/shared/auth"
+	"feedback_hub_2/internal/shared/bootstrap"
+	events "feedback_hub_2/internal/shared/bus"
+	"feedback_hub_2/internal/shared/persistence"
+	"feedback_hub_2/internal/shared/queries"
+	web "feedback_hub_2/internal/shared/web"
+	userapp "feedback_hub_2/internal/user/application"
+	authinfra "feedback_hub_2/internal/user/infrastructure/auth"
+	userinterfaces "feedback_hub_2/internal/user/interfaces"
 
 	_ "feedback_hub_2/docs"
 
@@ -29,11 +36,11 @@ import (
 // directly importing internal packages.
 type Server struct {
 	dbPool         *pgxpool.Pool
-	roleHandler    *httpiface.RoleHandler
-	userHandler    *httpiface.UserHandler
-	ideaHandler    *httpiface.IdeaHandler
-	authHandler    *httpiface.AuthHandler
-	authMiddleware *httpiface.AuthMiddleware
+	roleHandler    *roleinterfaces.RoleHandler
+	userHandler    *userinterfaces.UserHandler
+	ideaHandler    *ideainterfaces.IdeaHandler
+	authHandler    *userinterfaces.AuthHandler
+	authMiddleware *userinterfaces.AuthMiddleware
 	initialized    bool
 }
 
@@ -92,6 +99,10 @@ func (s *Server) Initialize(ctx context.Context) error {
 	userRepo := persistence.NewUserRepository(s.dbPool)
 	ideaRepo := persistence.NewIdeaRepository(s.dbPool)
 
+	// Create shared query services
+	roleQueries := queries.NewRoleQueryService(roleRepo)
+	userQueries := queries.NewUserQueryService(userRepo)
+
 	// Create domain services
 	authService := auth.NewAuthorizationService()
 
@@ -104,12 +115,12 @@ func (s *Server) Initialize(ctx context.Context) error {
 	eventPublisher := events.NewEventBusPublisher(eventBus)
 
 	// Create application services
-	roleService := application.NewRoleService(roleRepo, userRepo, authService, eventPublisher)
-	userService := application.NewUserService(userRepo, roleRepo, authService, eventPublisher)
-	ideaService := application.NewIdeaApplicationService(ideaRepo, userRepo)
+	roleService := roleapp.NewRoleService(roleRepo, userQueries, authService, eventPublisher)
+	userService := userapp.NewUserService(userRepo, roleQueries, authService, eventPublisher)
+	ideaService := ideaapp.NewIdeaApplicationService(ideaRepo, userQueries)
 
 	// Create bootstrap service and initialize system
-	bootstrapService := application.NewBootstrapService(roleService, userService)
+	bootstrapService := bootstrap.NewBootstrapService(roleService, userService)
 	initCtx, initCancel := context.WithTimeout(ctx, 30*time.Second)
 	defer initCancel()
 
@@ -118,13 +129,13 @@ func (s *Server) Initialize(ctx context.Context) error {
 	}
 
 	// Create HTTP handlers
-	s.roleHandler = httpiface.NewRoleHandler(roleService)
-	s.userHandler = httpiface.NewUserHandler(userService)
-	s.ideaHandler = httpiface.NewIdeaHandler(ideaService)
-	s.authHandler = httpiface.NewAuthHandler(userService, roleService, jwtService, passwordService)
+	s.roleHandler = roleinterfaces.NewRoleHandler(roleService)
+	s.userHandler = userinterfaces.NewUserHandler(userService)
+	s.ideaHandler = ideainterfaces.NewIdeaHandler(ideaService)
+	s.authHandler = userinterfaces.NewAuthHandler(userService, roleService, jwtService, passwordService)
 
 	// Create authentication middleware
-	s.authMiddleware = httpiface.NewAuthMiddleware(userService, jwtService)
+	s.authMiddleware = userinterfaces.NewAuthMiddleware(userService, jwtService)
 
 	s.initialized = true
 	return nil
@@ -159,7 +170,7 @@ func (s *Server) Handler() http.Handler {
 	// AI-hint: Root handler provides API information
 	mux.HandleFunc("/", s.rootHandler)
 	// AI-hint: Health endpoint for monitoring
-	mux.HandleFunc("/healthz", httpiface.HealthHandler)
+	mux.HandleFunc("/healthz", web.HealthHandler)
 	// AI-hint: Swagger UI for API documentation
 	mux.Handle("/swagger/", httpSwagger.WrapHandler)
 
@@ -285,8 +296,8 @@ func (s *Server) Handler() http.Handler {
 		}
 	}))
 
-	// AI-hint: Apply CORS middleware to enable cross-origin requests
-	return httpiface.CORS(mux)
+	// AI-hint: Return the configured mux
+	return mux
 }
 
 // min returns the smaller of two integers.

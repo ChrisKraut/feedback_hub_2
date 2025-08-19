@@ -1,23 +1,26 @@
-package application
+package bootstrap
 
 import (
 	"context"
 	"fmt"
 	"log"
 	"os"
+
+	roleapp "feedback_hub_2/internal/role/application"
+	userapp "feedback_hub_2/internal/user/application"
 )
 
 // BootstrapService handles system initialization and setup.
 // AI-hint: System bootstrap service for initializing required data and first user.
 // Ensures predefined roles exist and creates initial Super User from environment variables.
 type BootstrapService struct {
-	roleService *RoleService
-	userService *UserService
+	roleService *roleapp.RoleService
+	userService *userapp.UserService
 }
 
 // NewBootstrapService creates a new BootstrapService instance.
 // AI-hint: Factory method for bootstrap service with dependency injection.
-func NewBootstrapService(roleService *RoleService, userService *UserService) *BootstrapService {
+func NewBootstrapService(roleService *roleapp.RoleService, userService *userapp.UserService) *BootstrapService {
 	return &BootstrapService{
 		roleService: roleService,
 		userService: userService,
