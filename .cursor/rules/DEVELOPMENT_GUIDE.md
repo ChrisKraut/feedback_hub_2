@@ -20,10 +20,28 @@ Feedback Hub is a Go-based application built with Domain-Driven Design (DDD) pri
 feedback_hub_2/
 ├── cmd/api/                    # Application entry point
 ├── internal/                   # Private application code
-│   ├── application/           # Application services (business logic)
-│   ├── domain/               # Domain models and business rules
-│   ├── infrastructure/       # External concerns (database, auth)
-│   └── interfaces/           # HTTP handlers and API layer
+│   ├── shared/                # Shared code across all domains
+│   │   ├── bus/              # Event bus and messaging
+│   │   ├── persistence/      # Shared persistence utilities
+│   │   ├── web/              # Shared web utilities
+│   │   ├── auth/             # Shared authentication
+│   │   ├── queries/          # Shared query services
+│   │   └── bootstrap/        # System initialization
+│   ├── user/                 # User domain module
+│   │   ├── domain/          # User domain logic
+│   │   ├── application/     # User application services
+│   │   ├── infrastructure/  # User infrastructure
+│   │   └── interfaces/      # User HTTP handlers
+│   ├── role/                 # Role domain module
+│   │   ├── domain/          # Role domain logic
+│   │   ├── application/     # Role application services
+│   │   ├── infrastructure/  # Role infrastructure
+│   │   └── interfaces/      # Role HTTP handlers
+│   └── idea/                 # Idea domain module
+│       ├── domain/          # Idea domain logic
+│       ├── application/     # Idea application services
+│       ├── infrastructure/  # Idea infrastructure
+│       └── interfaces/      # Idea HTTP handlers
 ├── docs/                     # Swagger documentation
 ├── pkg/                      # Public packages
 ├── scripts/                  # Database migrations
@@ -37,13 +55,40 @@ feedback_hub_2/
 Domain Model → Repository → Application Service → HTTP Handler → Tests → Swagger Docs
 ```
 
+### 2. **DDD Architecture Principles**
+- **Domain Isolation**: Each domain is completely isolated with no direct dependencies
+- **Event-Driven Communication**: Cross-domain communication through shared event bus
+- **Shared Layer Infrastructure**: Centralized persistence, auth, and web utilities
+- **Clean Import Structure**: No cross-domain dependencies, proper DDD layering
+
+### 3. **Import Patterns**
+```
+✅ CORRECT - Domain-specific imports:
+import "feedback_hub_2/internal/user/domain"
+import "feedback_hub_2/internal/role/application"
+
+✅ CORRECT - Shared layer imports:
+import "feedback_hub_2/internal/shared/bus"
+import "feedback_hub_2/internal/shared/persistence"
+
+❌ WRONG - Cross-domain imports:
+import "feedback_hub_2/internal/user/domain"  // From role domain
+import "feedback_hub_2/internal/idea/application"  // From user domain
+```
+
 ### 2. **Code Organization Principles**
 - **Domain Layer**: Pure business logic, no external dependencies
 - **Application Layer**: Orchestrates domain entities and repositories
 - **Infrastructure Layer**: Implements interfaces defined in domain
 - **Interface Layer**: HTTP transport, validation, and error handling
 
-### 3. **AI-Friendly Development**
+### 3. **Event-Driven Communication**
+- **Cross-Domain Events**: Use the shared event bus for domain communication
+- **Event Types**: Define events in `internal/shared/bus/events.go`
+- **Event Handlers**: Subscribe to events in your domain services
+- **No Direct Dependencies**: Domains communicate only through events
+
+### 4. **AI-Friendly Development**
 - Add comprehensive comments starting with `// AI-hint:` for future AI iterations
 - Document business rules and domain invariants
 - Explain architectural decisions and patterns
@@ -103,7 +148,7 @@ swag init -g cmd/api/main.go -o docs
 
 ### **Step-by-Step Process:**
 
-#### 1. **Create Domain Model** (`internal/domain/feature/feature.go`)
+#### 1. **Create Domain Model** (`internal/{domain}/domain/feature.go`)
 ```go
 package feature
 
@@ -134,13 +179,13 @@ var (
 )
 ```
 
-#### 2. **Create Repository Implementation** (`internal/infrastructure/persistence/feature_repository.go`)
+#### 2. **Create Repository Implementation** (`internal/{domain}/infrastructure/feature_repository.go`)
 ```go
 package persistence
 
 import (
     "context"
-    "feedback_hub_2/internal/domain/feature"
+    "feedback_hub_2/internal/{domain}/domain"
     "github.com/google/uuid"
     "github.com/jackc/pgx/v5/pgxpool"
 )
@@ -158,13 +203,13 @@ func (r *FeatureRepository) Save(ctx interface{}, feature *feature.Feature) erro
 }
 ```
 
-#### 3. **Create Application Service** (`internal/application/feature_service.go`)
+#### 3. **Create Application Service** (`internal/{domain}/application/feature_service.go`)
 ```go
 package application
 
 import (
     "context"
-    "feedback_hub_2/internal/domain/feature"
+    "feedback_hub_2/internal/{domain}/domain"
     "github.com/google/uuid"
 )
 
@@ -181,13 +226,13 @@ func (s *FeatureApplicationService) CreateFeature(ctx context.Context, cmd Creat
 }
 ```
 
-#### 4. **Create HTTP Handler** (`internal/interfaces/http/feature_handler.go`)
+#### 4. **Create HTTP Handler** (`internal/{domain}/interfaces/feature_handler.go`)
 ```go
 package http
 
 import (
     "encoding/json"
-    "feedback_hub_2/internal/application"
+    "feedback_hub_2/internal/{domain}/application"
     "net/http"
 )
 
@@ -348,6 +393,49 @@ psql -d your_database -f scripts/migrate_feature.sql
 - Verify JWT secret is set in environment
 - Ensure cookies are being sent with requests
 
+## DDD Architecture & Import Patterns
+
+### **Domain Isolation Rules**
+- **NEVER import from other domains** - this breaks DDD principles
+- **Use shared layer** for common functionality (auth, persistence, web utilities)
+- **Communicate through events** for cross-domain operations
+
+### **Correct Import Patterns**
+```go
+// ✅ CORRECT - Domain-specific imports
+import "feedback_hub_2/internal/user/domain"
+import "feedback_hub_2/internal/role/application"
+
+// ✅ CORRECT - Shared layer imports
+import "feedback_hub_2/internal/shared/bus"
+import "feedback_hub_2/internal/shared/persistence"
+import "feedback_hub_2/internal/shared/web"
+
+// ❌ WRONG - Cross-domain imports (will cause compilation errors)
+import "feedback_hub_2/internal/user/domain"  // From role domain
+import "feedback_hub_2/internal/idea/application"  // From user domain
+```
+
+### **Event-Driven Communication**
+```go
+// Subscribe to events from other domains
+err := eventBus.Subscribe("user.created", func(ctx context.Context, event events.DomainEvent) error {
+    // Handle user creation event
+    return nil
+})
+
+// Publish events for other domains
+userCreatedEvent := events.NewUserCreatedEvent(userID, email, name, roleID, roleName)
+err := eventBus.Publish(ctx, userCreatedEvent)
+```
+
+### **Adding New Domains**
+1. Create `internal/{newdomain}/` directory
+2. Add the four standard layers: `domain/`, `application/`, `infrastructure/`, `interfaces/`
+3. Define domain events in `internal/shared/bus/events.go`
+4. Use shared persistence and web utilities
+5. Follow the established patterns for each layer
+
 ## Best Practices Summary
 
 1. **Always follow the layered architecture** - don't skip layers
@@ -360,6 +448,9 @@ psql -d your_database -f scripts/migrate_feature.sql
 8. **Validate input at multiple layers** for security
 9. **Use proper HTTP status codes** and error responses
 10. **Keep dependencies minimal** and well-defined
+11. **Maintain domain isolation** - no cross-domain imports
+12. **Use event-driven communication** for cross-domain operations
+13. **Follow DDD principles strictly** in all new code
 
 ## Quick Reference Commands
 
