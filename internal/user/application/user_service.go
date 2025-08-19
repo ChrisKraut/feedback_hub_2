@@ -37,8 +37,8 @@ func NewUserService(userRepo domain.Repository, roleQueries queries.RoleQueries,
 
 // CreateUser creates a new user with authorization and role validation checks.
 // AI-hint: User creation with complex business rules - Super Users can create any user,
-// Product Owners can only create Contributors.
-func (s *UserService) CreateUser(ctx interface{}, email, name, roleID string, createdByUserID string) (*domain.User, error) {
+// Product Owners can only create Contributors, with organization scoping.
+func (s *UserService) CreateUser(ctx interface{}, email, name, roleID, organizationID string, createdByUserID string) (*domain.User, error) {
 	context := ctx.(context.Context)
 
 	// Get the user context for authorization
@@ -58,8 +58,8 @@ func (s *UserService) CreateUser(ctx interface{}, email, name, roleID string, cr
 		return nil, domain.ErrUnauthorized
 	}
 
-	// Check if email already exists
-	existingUser, err := s.userRepo.GetByEmail(context, email)
+	// Check if email already exists in the organization
+	existingUser, err := s.userRepo.GetByEmailAndOrganization(context, email, organizationID)
 	if err == nil && existingUser != nil {
 		return nil, domain.ErrEmailAlreadyExists
 	}
@@ -67,9 +67,9 @@ func (s *UserService) CreateUser(ctx interface{}, email, name, roleID string, cr
 		return nil, err
 	}
 
-	// Create the user
+	// Create the user with organization scoping
 	userID := uuid.New().String()
-	newUser, err := domain.NewUser(userID, email, name, roleID)
+	newUser, err := domain.NewUser(userID, email, name, roleID, organizationID)
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +264,7 @@ func (s *UserService) CreateSuperUser(ctx interface{}, email, name string) (*dom
 
 	// Generate a new UUID for the Super User
 	userID := uuid.New().String()
-	newUser, err := domain.NewUser(userID, email, name, superUserRole.ID)
+	newUser, err := domain.NewUserWithoutOrganization(userID, email, name, superUserRole.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -278,12 +278,12 @@ func (s *UserService) CreateSuperUser(ctx interface{}, email, name string) (*dom
 }
 
 // CreateUserWithPassword creates a user with password authentication.
-// AI-hint: User creation method for password-based authentication with proper validation.
-func (s *UserService) CreateUserWithPassword(ctx interface{}, userID, email, name, passwordHash, roleID string) (*domain.User, error) {
+// AI-hint: User creation method for password-based authentication with proper validation and organization scoping.
+func (s *UserService) CreateUserWithPassword(ctx interface{}, userID, email, name, passwordHash, roleID, organizationID string) (*domain.User, error) {
 	context := ctx.(context.Context)
 
-	// Check if email already exists
-	existingUser, err := s.userRepo.GetByEmail(context, email)
+	// Check if email already exists in the organization
+	existingUser, err := s.userRepo.GetByEmailAndOrganization(context, email, organizationID)
 	if err == nil && existingUser != nil {
 		return nil, domain.ErrEmailAlreadyExists
 	}
@@ -291,8 +291,8 @@ func (s *UserService) CreateUserWithPassword(ctx interface{}, userID, email, nam
 		return nil, err
 	}
 
-	// Create user with password
-	newUser, err := domain.NewUserWithPassword(userID, email, name, passwordHash, roleID)
+	// Create user with password and organization scoping
+	newUser, err := domain.NewUserWithPassword(userID, email, name, passwordHash, roleID, organizationID)
 	if err != nil {
 		return nil, err
 	}

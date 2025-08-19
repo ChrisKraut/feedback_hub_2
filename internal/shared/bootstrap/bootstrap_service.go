@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 
+	orgapp "feedback_hub_2/internal/organization/application"
 	roleapp "feedback_hub_2/internal/role/application"
 	userapp "feedback_hub_2/internal/user/application"
 )
@@ -14,16 +15,18 @@ import (
 // AI-hint: System bootstrap service for initializing required data and first user.
 // Ensures predefined roles exist and creates initial Super User from environment variables.
 type BootstrapService struct {
-	roleService *roleapp.RoleService
-	userService *userapp.UserService
+	roleService         *roleapp.RoleService
+	userService         *userapp.UserService
+	organizationService *orgapp.OrganizationService
 }
 
 // NewBootstrapService creates a new BootstrapService instance.
 // AI-hint: Factory method for bootstrap service with dependency injection.
-func NewBootstrapService(roleService *roleapp.RoleService, userService *userapp.UserService) *BootstrapService {
+func NewBootstrapService(roleService *roleapp.RoleService, userService *userapp.UserService, organizationService *orgapp.OrganizationService) *BootstrapService {
 	return &BootstrapService{
-		roleService: roleService,
-		userService: userService,
+		roleService:         roleService,
+		userService:         userService,
+		organizationService: organizationService,
 	}
 }
 
@@ -32,6 +35,12 @@ func NewBootstrapService(roleService *roleapp.RoleService, userService *userapp.
 // Safe to run multiple times - will not duplicate data.
 func (s *BootstrapService) Initialize(ctx context.Context) error {
 	log.Println("Starting system initialization...")
+
+	// Ensure default organization exists
+	if err := s.ensureDefaultOrganization(ctx); err != nil {
+		return fmt.Errorf("failed to ensure default organization: %w", err)
+	}
+	log.Println("Default organization ensured")
 
 	// Ensure predefined roles exist
 	if err := s.roleService.EnsurePredefinedRoles(ctx); err != nil {
@@ -83,5 +92,27 @@ func (s *BootstrapService) createInitialSuperUser(ctx context.Context) error {
 	}
 
 	log.Printf("Created initial Super User: %s (%s) with role %s", superUser.Name, superUser.Email, superUserRole.Name)
+	return nil
+}
+
+// ensureDefaultOrganization ensures that a default organization exists.
+// AI-hint: Creates a default organization if none exists, ensuring the system
+// has at least one organization for new users and existing data.
+func (s *BootstrapService) ensureDefaultOrganization(ctx context.Context) error {
+	// Try to get the default organization by slug
+	defaultOrg, err := s.organizationService.GetOrganizationBySlug(ctx, "default")
+	if err == nil {
+		log.Println("Default organization already exists")
+		return nil
+	}
+
+	// If not found, create the default organization
+	log.Println("Creating default organization...")
+	defaultOrg, err = s.organizationService.CreateOrganization(ctx, "Default Organization", "default", "Default organization for new installations", nil)
+	if err != nil {
+		return fmt.Errorf("failed to create default organization: %w", err)
+	}
+
+	log.Printf("Created default organization: %s (%s)", defaultOrg.Name, defaultOrg.Slug)
 	return nil
 }

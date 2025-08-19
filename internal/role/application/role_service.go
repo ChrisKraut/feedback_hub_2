@@ -35,9 +35,9 @@ func NewRoleService(roleRepo roledomain.Repository, userQueries queries.UserQuer
 	}
 }
 
-// CreateRole creates a new role with authorization checks.
-// AI-hint: Role creation with business rule enforcement - only Super Users can create roles.
-func (s *RoleService) CreateRole(ctx interface{}, name string, createdByUserID string) (*roledomain.Role, error) {
+// CreateRole creates a new role with authorization and business rule checks.
+// AI-hint: Role creation with business rule enforcement and organization scoping.
+func (s *RoleService) CreateRole(ctx interface{}, name, organizationID string, createdByUserID string) (*roledomain.Role, error) {
 	context := ctx.(context.Context)
 
 	// Get the user context for authorization
@@ -51,18 +51,18 @@ func (s *RoleService) CreateRole(ctx interface{}, name string, createdByUserID s
 		return nil, roledomain.ErrUnauthorized
 	}
 
-	// Check if role name already exists
-	exists, err := s.roleRepo.Exists(context, name)
-	if err != nil {
-		return nil, err
-	}
-	if exists {
+	// Check if role name already exists in the organization
+	exists, err := s.roleRepo.GetByNameAndOrganization(context, name, organizationID)
+	if err == nil && exists != nil {
 		return nil, roledomain.ErrRoleNameAlreadyExists
 	}
+	if err != roledomain.ErrRoleNotFound {
+		return nil, err
+	}
 
-	// Create the role
+	// Create the role with organization scoping
 	roleID := uuid.New().String()
-	newRole, err := roledomain.NewRole(roleID, name)
+	newRole, err := roledomain.NewRole(roleID, name, organizationID)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +213,7 @@ func (s *RoleService) EnsurePredefinedRoles(ctx interface{}) error {
 
 		if !exists {
 			roleID := uuid.New().String()
-			newRole, err := roledomain.NewRole(roleID, roleName)
+			newRole, err := roledomain.NewRoleWithoutOrganization(roleID, roleName)
 			if err != nil {
 				return err
 			}

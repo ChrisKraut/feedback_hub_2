@@ -42,11 +42,12 @@ type LoginRequest struct {
 }
 
 // RegisterRequest represents the request body for user registration.
-// AI-hint: DTO for user registration with email, name, and password.
+// AI-hint: User registration with email, name, password, and organization scoping.
 type RegisterRequest struct {
-	Email    string `json:"email"`
-	Name     string `json:"name"`
-	Password string `json:"password"`
+	Email          string `json:"email"`
+	Name           string `json:"name"`
+	Password       string `json:"password"`
+	OrganizationID string `json:"organization_id"` // Organization scoping for multi-tenant support
 }
 
 // AuthResponse represents the response body for authentication operations.
@@ -166,8 +167,8 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate input
-	if req.Email == "" || req.Name == "" || req.Password == "" {
-		web.WriteErrorResponse(w, http.StatusBadRequest, "Email, name and password are required")
+	if req.Email == "" || req.Name == "" || req.Password == "" || req.OrganizationID == "" {
+		web.WriteErrorResponse(w, http.StatusBadRequest, "Email, name, password, and organization ID are required")
 		return
 	}
 
@@ -193,7 +194,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	// Create user with hashed password
 	userID := uuid.New().String()
-	user, err := h.userService.CreateUserWithPassword(r.Context(), userID, req.Email, req.Name, hashedPassword, contributorRole.ID)
+	user, err := h.userService.CreateUserWithPassword(r.Context(), userID, req.Email, req.Name, hashedPassword, contributorRole.ID, req.OrganizationID)
 	if err != nil {
 		if err.Error() == "email already exists" {
 			web.WriteErrorResponse(w, http.StatusConflict, "Email already registered")

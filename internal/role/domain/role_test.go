@@ -7,30 +7,45 @@ import (
 )
 
 func TestNewRole(t *testing.T) {
-	t.Run("valid role creation", func(t *testing.T) {
-		role, err := NewRole("123", "Product Owner")
+	t.Run("valid role creation with organization", func(t *testing.T) {
+		role, err := NewRole("123", "Product Owner", "org-456")
 
 		assert.NoError(t, err)
 		assert.NotNil(t, role)
 		assert.Equal(t, "123", role.ID)
 		assert.Equal(t, "Product Owner", role.Name)
+		assert.Equal(t, "org-456", role.OrganizationID)
+		assert.False(t, role.CreatedAt.IsZero())
+		assert.False(t, role.UpdatedAt.IsZero())
+	})
+
+	t.Run("valid role creation without organization (legacy support)", func(t *testing.T) {
+		role, err := NewRoleWithoutOrganization("123", "Product Owner")
+
+		assert.NoError(t, err)
+		assert.NotNil(t, role)
+		assert.Equal(t, "123", role.ID)
+		assert.Equal(t, "Product Owner", role.Name)
+		assert.Equal(t, "", role.OrganizationID)
 		assert.False(t, role.CreatedAt.IsZero())
 		assert.False(t, role.UpdatedAt.IsZero())
 	})
 
 	t.Run("empty required fields", func(t *testing.T) {
 		testCases := []struct {
-			id            string
-			name          string
-			expectedError string
+			id             string
+			name           string
+			organizationID string
+			expectedError  string
 		}{
-			{"", "Product Owner", "role ID cannot be empty"},
-			{"123", "", "role name cannot be empty"},
-			{"123", "   ", "role name cannot be empty"},
+			{"", "Product Owner", "org-456", "role ID cannot be empty"},
+			{"123", "", "org-456", "role name cannot be empty"},
+			{"123", "   ", "org-456", "role name cannot be empty"},
+			{"123", "Product Owner", "", "organization ID cannot be empty"},
 		}
 
 		for _, tc := range testCases {
-			role, err := NewRole(tc.id, tc.name)
+			role, err := NewRole(tc.id, tc.name, tc.organizationID)
 			assert.Error(t, err)
 			assert.Nil(t, role)
 			assert.Contains(t, err.Error(), tc.expectedError)
@@ -40,7 +55,7 @@ func TestNewRole(t *testing.T) {
 
 func TestRole_UpdateName(t *testing.T) {
 	t.Run("valid name update for regular role", func(t *testing.T) {
-		role, _ := NewRole("123", "Product Owner")
+		role, _ := NewRole("123", "Product Owner", "org-456")
 		originalUpdatedAt := role.UpdatedAt
 
 		err := role.UpdateName("Updated Role")
@@ -51,7 +66,7 @@ func TestRole_UpdateName(t *testing.T) {
 	})
 
 	t.Run("cannot update Super User role name", func(t *testing.T) {
-		role, _ := NewRole("123", SuperUserRoleName)
+		role, _ := NewRole("123", SuperUserRoleName, "org-456")
 
 		err := role.UpdateName("Hacker")
 
@@ -61,7 +76,7 @@ func TestRole_UpdateName(t *testing.T) {
 	})
 
 	t.Run("empty name", func(t *testing.T) {
-		role, _ := NewRole("123", "Product Owner")
+		role, _ := NewRole("123", "Product Owner", "org-456")
 
 		err := role.UpdateName("")
 
@@ -70,27 +85,80 @@ func TestRole_UpdateName(t *testing.T) {
 	})
 }
 
+func TestRole_UpdateOrganization(t *testing.T) {
+	t.Run("valid organization update", func(t *testing.T) {
+		role, _ := NewRole("123", "Product Owner", "org-456")
+		originalUpdatedAt := role.UpdatedAt
+
+		err := role.UpdateOrganization("new-org-789")
+
+		assert.NoError(t, err)
+		assert.Equal(t, "new-org-789", role.OrganizationID)
+		assert.True(t, role.UpdatedAt.After(originalUpdatedAt))
+	})
+
+	t.Run("empty organization ID", func(t *testing.T) {
+		role, _ := NewRole("123", "Product Owner", "org-456")
+
+		err := role.UpdateOrganization("")
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "organization ID cannot be empty")
+	})
+}
+
 func TestRole_IsSuperUser(t *testing.T) {
 	t.Run("Super User role", func(t *testing.T) {
-		role, _ := NewRole("123", SuperUserRoleName)
+		role, _ := NewRole("123", SuperUserRoleName, "org-456")
 		assert.True(t, role.IsSuperUser())
 	})
 
 	t.Run("regular role", func(t *testing.T) {
-		role, _ := NewRole("123", "Product Owner")
+		role, _ := NewRole("123", "Product Owner", "org-456")
 		assert.False(t, role.IsSuperUser())
 	})
 }
 
 func TestRole_CanBeDeleted(t *testing.T) {
 	t.Run("Super User role cannot be deleted", func(t *testing.T) {
-		role, _ := NewRole("123", SuperUserRoleName)
+		role, _ := NewRole("123", SuperUserRoleName, "org-456")
 		assert.False(t, role.CanBeDeleted())
 	})
 
 	t.Run("regular role can be deleted", func(t *testing.T) {
-		role, _ := NewRole("123", "Product Owner")
+		role, _ := NewRole("123", "Product Owner", "org-456")
 		assert.True(t, role.CanBeDeleted())
+	})
+}
+
+func TestRole_IsInOrganization(t *testing.T) {
+	t.Run("role is in specified organization", func(t *testing.T) {
+		role, _ := NewRole("123", "Product Owner", "org-456")
+
+		assert.True(t, role.IsInOrganization("org-456"))
+		assert.False(t, role.IsInOrganization("org-789"))
+	})
+
+	t.Run("role without organization", func(t *testing.T) {
+		role, _ := NewRoleWithoutOrganization("123", "Product Owner")
+
+		// Roles without organization should return false for any organization check
+		assert.False(t, role.IsInOrganization("org-456"))
+		assert.False(t, role.IsInOrganization(""))
+	})
+}
+
+func TestRole_IsOrganizationScoped(t *testing.T) {
+	t.Run("organization scoped role", func(t *testing.T) {
+		role, _ := NewRole("123", "Product Owner", "org-456")
+
+		assert.True(t, role.IsOrganizationScoped())
+	})
+
+	t.Run("non-organization scoped role", func(t *testing.T) {
+		role, _ := NewRoleWithoutOrganization("123", "Product Owner")
+
+		assert.False(t, role.IsOrganizationScoped())
 	})
 }
 

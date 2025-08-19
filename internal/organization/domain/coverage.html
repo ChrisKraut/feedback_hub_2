@@ -1,0 +1,381 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>domain: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">feedback_hub_2/internal/organization/domain/organization.go (90.4%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package domain
+
+import (
+        "fmt"
+        "regexp"
+        "strings"
+        "time"
+
+        "github.com/google/uuid"
+)
+
+// Organization represents a business entity that can contain users, roles, and ideas.
+// AI-hint: Core domain entity for multi-tenant functionality. Each organization operates
+// in complete isolation with its own users, roles, and ideas. This entity enforces
+// business rules and validation for organization management.
+type Organization struct {
+        ID          uuid.UUID       `json:"id"`
+        Name        string          `json:"name"`
+        Slug        string          `json:"slug"`
+        Description string          `json:"description"`
+        Settings    map[string]any  `json:"settings"`
+        CreatedAt   time.Time       `json:"created_at"`
+        UpdatedAt   time.Time       `json:"updated_at"`
+}
+
+// Organization constants for validation
+const (
+        MaxNameLength = 255
+        MaxSlugLength = 100
+)
+
+// slugRegex defines the valid format for organization slugs
+var slugRegex = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
+
+// NewOrganization creates a new organization with the given details.
+// AI-hint: Factory method for creating new organizations with automatic ID generation
+// and timestamp creation. Validates all input parameters before creation.
+func NewOrganization(name, slug, description string, settings map[string]any) (*Organization, error) <span class="cov8" title="1">{
+        if err := validateName(name); err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">if err := validateSlug(slug); err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+
+        // Initialize settings map if nil
+        <span class="cov8" title="1">if settings == nil </span><span class="cov8" title="1">{
+                settings = make(map[string]any)
+        }</span>
+
+        <span class="cov8" title="1">now := time.Now()
+        org := &amp;Organization{
+                ID:          uuid.New(),
+                Name:        name,
+                Slug:        slug,
+                Description: description,
+                Settings:    settings,
+                CreatedAt:   now,
+                UpdatedAt:   now,
+        }
+
+        return org, nil</span>
+}
+
+// NewOrganizationWithID creates a new organization with a specific ID.
+// AI-hint: Factory method for creating organizations with existing IDs, useful for
+// reconstruction from database or testing scenarios.
+func NewOrganizationWithID(id uuid.UUID, name, slug, description string, settings map[string]any) (*Organization, error) <span class="cov8" title="1">{
+        if id == uuid.Nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("organization ID cannot be zero")
+        }</span>
+
+        <span class="cov8" title="1">if err := validateName(name); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">if err := validateSlug(slug); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        // Initialize settings map if nil
+        <span class="cov8" title="1">if settings == nil </span><span class="cov0" title="0">{
+                settings = make(map[string]any)
+        }</span>
+
+        <span class="cov8" title="1">now := time.Now()
+        org := &amp;Organization{
+                ID:          id,
+                Name:        name,
+                Slug:        slug,
+                Description: description,
+                Settings:    settings,
+                CreatedAt:   now,
+                UpdatedAt:   now,
+        }
+
+        return org, nil</span>
+}
+
+// Update modifies the organization's basic information.
+// AI-hint: Business method for updating organization details. Automatically updates
+// the UpdatedAt timestamp and validates all input parameters.
+func (o *Organization) Update(name, slug, description string, settings map[string]any) error <span class="cov8" title="1">{
+        if err := validateName(name); err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">if err := validateSlug(slug); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">o.Name = name
+        o.Slug = slug
+        o.Description = description
+        o.Settings = settings
+        o.UpdatedAt = time.Now()
+
+        return nil</span>
+}
+
+// Validate ensures the organization is in a valid state.
+// AI-hint: Domain validation method that ensures all business rules are satisfied.
+// Called before persistence operations to maintain data integrity.
+func (o *Organization) Validate() error <span class="cov8" title="1">{
+        if o.ID == uuid.Nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("organization ID cannot be zero")
+        }</span>
+
+        <span class="cov8" title="1">if err := validateName(o.Name); err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">if err := validateSlug(o.Slug); err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">if o.CreatedAt.IsZero() </span><span class="cov8" title="1">{
+                return fmt.Errorf("organization created at cannot be zero")
+        }</span>
+
+        <span class="cov8" title="1">if o.UpdatedAt.IsZero() </span><span class="cov8" title="1">{
+                return fmt.Errorf("organization updated at cannot be zero")
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// IsActive checks if the organization is currently active.
+// AI-hint: Business method that checks organization status from settings.
+// Defaults to active if no explicit setting is provided.
+func (o *Organization) IsActive() bool <span class="cov8" title="1">{
+        if active, exists := o.Settings["active"]; exists </span><span class="cov8" title="1">{
+                if activeBool, ok := active.(bool); ok </span><span class="cov8" title="1">{
+                        return activeBool
+                }</span>
+        }
+        <span class="cov8" title="1">return true</span> // Default to active
+}
+
+// GetSetting retrieves a setting value from the organization.
+// AI-hint: Utility method for accessing organization configuration settings.
+// Returns the value and a boolean indicating if the setting exists.
+func (o *Organization) GetSetting(key string) (any, bool) <span class="cov8" title="1">{
+        value, exists := o.Settings[key]
+        return value, exists
+}</span>
+
+// SetSetting sets a configuration setting for the organization.
+// AI-hint: Utility method for updating organization configuration settings.
+// Automatically updates the UpdatedAt timestamp.
+func (o *Organization) SetSetting(key string, value any) <span class="cov8" title="1">{
+        if o.Settings == nil </span><span class="cov0" title="0">{
+                o.Settings = make(map[string]any)
+        }</span>
+        <span class="cov8" title="1">o.Settings[key] = value
+        o.UpdatedAt = time.Now()</span>
+}
+
+// RemoveSetting removes a configuration setting from the organization.
+// AI-hint: Utility method for removing organization configuration settings.
+// Automatically updates the UpdatedAt timestamp.
+func (o *Organization) RemoveSetting(key string) <span class="cov8" title="1">{
+        if o.Settings != nil </span><span class="cov8" title="1">{
+                delete(o.Settings, key)
+                o.UpdatedAt = time.Now()
+        }</span>
+}
+
+// Clone creates a deep copy of the organization with a new ID and timestamps.
+// AI-hint: Utility method for creating organization copies, useful for testing
+// and creating organization templates. Ensures complete isolation between copies.
+func (o *Organization) Clone() *Organization <span class="cov8" title="1">{
+        // Deep copy settings map
+        settingsCopy := make(map[string]any)
+        for k, v := range o.Settings </span><span class="cov8" title="1">{
+                settingsCopy[k] = v
+        }</span>
+
+        <span class="cov8" title="1">now := time.Now()
+        return &amp;Organization{
+                ID:          uuid.New(),
+                Name:        o.Name,
+                Slug:        o.Slug,
+                Description: o.Description,
+                Settings:    settingsCopy,
+                CreatedAt:   now,
+                UpdatedAt:   now,
+        }</span>
+}
+
+// validateName validates the organization name according to business rules.
+// AI-hint: Private validation method for organization names. Enforces length limits
+// and ensures names are not empty.
+func validateName(name string) error <span class="cov8" title="1">{
+        if strings.TrimSpace(name) == "" </span><span class="cov8" title="1">{
+                return fmt.Errorf("organization name cannot be empty")
+        }</span>
+
+        <span class="cov8" title="1">if len(name) &gt; MaxNameLength </span><span class="cov8" title="1">{
+                return fmt.Errorf("organization name cannot exceed %d characters", MaxNameLength)
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// validateSlug validates the organization slug according to business rules.
+// AI-hint: Private validation method for organization slugs. Enforces format rules,
+// length limits, and ensures slugs are URL-safe and unique-friendly.
+func validateSlug(slug string) error <span class="cov8" title="1">{
+        if strings.TrimSpace(slug) == "" </span><span class="cov8" title="1">{
+                return fmt.Errorf("organization slug cannot be empty")
+        }</span>
+
+        <span class="cov8" title="1">if len(slug) &gt; MaxSlugLength </span><span class="cov8" title="1">{
+                return fmt.Errorf("organization slug cannot exceed %d characters", MaxSlugLength)
+        }</span>
+
+        <span class="cov8" title="1">if !slugRegex.MatchString(slug) </span><span class="cov8" title="1">{
+                return fmt.Errorf("organization slug can only contain lowercase letters, numbers, and hyphens")
+        }</span>
+
+        <span class="cov8" title="1">if strings.HasPrefix(slug, "-") || strings.HasSuffix(slug, "-") </span><span class="cov0" title="0">{
+                return fmt.Errorf("organization slug cannot start or end with hyphen")
+        }</span>
+
+        <span class="cov8" title="1">if strings.Contains(slug, "--") </span><span class="cov0" title="0">{
+                return fmt.Errorf("organization slug cannot contain consecutive hyphens")
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// GenerateSlug automatically generates a URL-friendly slug from an organization name.
+// AI-hint: Utility function for automatic slug generation. Converts organization names
+// to URL-safe slugs by removing special characters and converting spaces to hyphens.
+func GenerateSlug(name string) string <span class="cov8" title="1">{
+        if name == "" </span><span class="cov8" title="1">{
+                return ""
+        }</span>
+
+        // Convert to lowercase
+        <span class="cov8" title="1">slug := strings.ToLower(name)
+
+        // Remove special characters and replace with spaces
+        slug = regexp.MustCompile(`[^a-z0-9\s]`).ReplaceAllString(slug, " ")
+
+        // Replace multiple spaces with single space
+        slug = regexp.MustCompile(`\s+`).ReplaceAllString(slug, " ")
+
+        // Replace spaces with hyphens
+        slug = strings.ReplaceAll(slug, " ", "-")
+
+        // Remove leading and trailing hyphens
+        slug = strings.Trim(slug, "-")
+
+        return slug</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

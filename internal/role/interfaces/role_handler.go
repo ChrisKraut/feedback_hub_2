@@ -27,16 +27,18 @@ func NewRoleHandler(roleService *roleapp.RoleService) *RoleHandler {
 // CreateRoleRequest represents the request body for creating a role.
 // AI-hint: DTO for role creation API with validation-friendly structure.
 type CreateRoleRequest struct {
-	Name string `json:"name"`
+	Name           string `json:"name"`
+	OrganizationID string `json:"organization_id"` // Organization scoping for multi-tenant support
 }
 
 // RoleResponse represents the response body for role operations.
 // AI-hint: DTO for role API responses with consistent structure.
 type RoleResponse struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	OrganizationID string `json:"organization_id"` // Organization scoping for multi-tenant support
+	CreatedAt      string `json:"created_at"`
+	UpdatedAt      string `json:"updated_at"`
 }
 
 // UpdateRoleRequest represents the request body for updating a role.
@@ -81,9 +83,13 @@ func (h *RoleHandler) CreateRole(w http.ResponseWriter, r *http.Request) {
 		web.WriteErrorResponse(w, http.StatusBadRequest, "Role name is required")
 		return
 	}
+	if strings.TrimSpace(req.OrganizationID) == "" {
+		web.WriteErrorResponse(w, http.StatusBadRequest, "Organization ID is required")
+		return
+	}
 
 	// Create the role
-	newRole, err := h.roleService.CreateRole(r.Context(), req.Name, userID)
+	newRole, err := h.roleService.CreateRole(r.Context(), req.Name, req.OrganizationID, userID)
 	if err != nil {
 		switch err {
 		case domain.ErrUnauthorized:
@@ -98,10 +104,11 @@ func (h *RoleHandler) CreateRole(w http.ResponseWriter, r *http.Request) {
 
 	// Return the created role
 	response := RoleResponse{
-		ID:        newRole.ID,
-		Name:      newRole.Name,
-		CreatedAt: newRole.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt: newRole.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		ID:             newRole.ID,
+		Name:           newRole.Name,
+		OrganizationID: newRole.OrganizationID,
+		CreatedAt:      newRole.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:      newRole.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -152,10 +159,11 @@ func (h *RoleHandler) GetRole(w http.ResponseWriter, r *http.Request) {
 
 	// Return the role
 	response := RoleResponse{
-		ID:        foundRole.ID,
-		Name:      foundRole.Name,
-		CreatedAt: foundRole.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt: foundRole.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		ID:             foundRole.ID,
+		Name:           foundRole.Name,
+		OrganizationID: foundRole.OrganizationID,
+		CreatedAt:      foundRole.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:      foundRole.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -193,10 +201,11 @@ func (h *RoleHandler) ListRoles(w http.ResponseWriter, r *http.Request) {
 	var responses []RoleResponse
 	for _, role := range roles {
 		responses = append(responses, RoleResponse{
-			ID:        role.ID,
-			Name:      role.Name,
-			CreatedAt: role.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-			UpdatedAt: role.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			ID:             role.ID,
+			Name:           role.Name,
+			OrganizationID: role.OrganizationID,
+			CreatedAt:      role.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			UpdatedAt:      role.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		})
 	}
 
@@ -270,10 +279,11 @@ func (h *RoleHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 
 	// Return the updated role
 	response := RoleResponse{
-		ID:        updatedRole.ID,
-		Name:      updatedRole.Name,
-		CreatedAt: updatedRole.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt: updatedRole.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		ID:             updatedRole.ID,
+		Name:           updatedRole.Name,
+		OrganizationID: updatedRole.OrganizationID,
+		CreatedAt:      updatedRole.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:      updatedRole.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 
 	w.Header().Set("Content-Type", "application/json")

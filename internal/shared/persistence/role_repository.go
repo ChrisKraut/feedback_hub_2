@@ -225,7 +225,8 @@ func (r *RoleRepository) EnsurePredefinedRoles(ctx interface{}) error {
 
 		if !exists {
 			roleID := uuid.New().String()
-			newRole, err := roledomain.NewRole(roleID, roleName)
+			// Use legacy function for predefined roles since they may not have organization context
+			newRole, err := roledomain.NewRoleWithoutOrganization(roleID, roleName)
 			if err != nil {
 				return err
 			}

@@ -27,20 +27,22 @@ func NewUserHandler(userService *userapp.UserService) *UserHandler {
 // CreateUserRequest represents the request body for creating a user.
 // AI-hint: DTO for user creation API with validation-friendly structure.
 type CreateUserRequest struct {
-	Email  string `json:"email"`
-	Name   string `json:"name"`
-	RoleID string `json:"role_id"`
+	Email          string `json:"email"`
+	Name           string `json:"name"`
+	RoleID         string `json:"role_id"`
+	OrganizationID string `json:"organization_id"` // Organization scoping for multi-tenant support
 }
 
 // UserResponse represents the response body for user operations.
 // AI-hint: DTO for user API responses with consistent structure.
 type UserResponse struct {
-	ID        string `json:"id"`
-	Email     string `json:"email"`
-	Name      string `json:"name"`
-	RoleID    string `json:"role_id"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
+	ID             string `json:"id"`
+	Email          string `json:"email"`
+	Name           string `json:"name"`
+	RoleID         string `json:"role_id"`
+	OrganizationID string `json:"organization_id"` // Organization scoping for multi-tenant support
+	CreatedAt      string `json:"created_at"`
+	UpdatedAt      string `json:"updated_at"`
 }
 
 // UpdateUserRequest represents the request body for updating a user.
@@ -99,9 +101,13 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		web.WriteErrorResponse(w, http.StatusBadRequest, "Role ID is required")
 		return
 	}
+	if strings.TrimSpace(req.OrganizationID) == "" {
+		web.WriteErrorResponse(w, http.StatusBadRequest, "Organization ID is required")
+		return
+	}
 
 	// Create the user
-	newUser, err := h.userService.CreateUser(r.Context(), req.Email, req.Name, req.RoleID, userID)
+	newUser, err := h.userService.CreateUser(r.Context(), req.Email, req.Name, req.RoleID, req.OrganizationID, userID)
 	if err != nil {
 		switch err {
 		case domain.ErrUnauthorized:
@@ -120,12 +126,13 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	// Return the created user
 	response := UserResponse{
-		ID:        newUser.ID,
-		Email:     newUser.Email,
-		Name:      newUser.Name,
-		RoleID:    newUser.RoleID,
-		CreatedAt: newUser.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt: newUser.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		ID:             newUser.ID,
+		Email:          newUser.Email,
+		Name:           newUser.Name,
+		RoleID:         newUser.RoleID,
+		OrganizationID: newUser.OrganizationID,
+		CreatedAt:      newUser.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:      newUser.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -176,12 +183,13 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 
 	// Return the user
 	response := UserResponse{
-		ID:        foundUser.ID,
-		Email:     foundUser.Email,
-		Name:      foundUser.Name,
-		RoleID:    foundUser.RoleID,
-		CreatedAt: foundUser.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt: foundUser.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		ID:             foundUser.ID,
+		Email:          foundUser.Email,
+		Name:           foundUser.Name,
+		RoleID:         foundUser.RoleID,
+		OrganizationID: foundUser.OrganizationID,
+		CreatedAt:      foundUser.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:      foundUser.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -219,12 +227,13 @@ func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	var responses []UserResponse
 	for _, user := range users {
 		responses = append(responses, UserResponse{
-			ID:        user.ID,
-			Email:     user.Email,
-			Name:      user.Name,
-			RoleID:    user.RoleID,
-			CreatedAt: user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-			UpdatedAt: user.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			ID:             user.ID,
+			Email:          user.Email,
+			Name:           user.Name,
+			RoleID:         user.RoleID,
+			OrganizationID: user.OrganizationID,
+			CreatedAt:      user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			UpdatedAt:      user.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		})
 	}
 
@@ -293,12 +302,13 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	// Return the updated user
 	response := UserResponse{
-		ID:        updatedUser.ID,
-		Email:     updatedUser.Email,
-		Name:      updatedUser.Name,
-		RoleID:    updatedUser.RoleID,
-		CreatedAt: updatedUser.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt: updatedUser.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		ID:             updatedUser.ID,
+		Email:          updatedUser.Email,
+		Name:           updatedUser.Name,
+		RoleID:         updatedUser.RoleID,
+		OrganizationID: updatedUser.OrganizationID,
+		CreatedAt:      updatedUser.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:      updatedUser.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -370,12 +380,13 @@ func (h *UserHandler) UpdateUserRole(w http.ResponseWriter, r *http.Request) {
 
 	// Return the updated user
 	response := UserResponse{
-		ID:        updatedUser.ID,
-		Email:     updatedUser.Email,
-		Name:      updatedUser.Name,
-		RoleID:    updatedUser.RoleID,
-		CreatedAt: updatedUser.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt: updatedUser.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		ID:             updatedUser.ID,
+		Email:          updatedUser.Email,
+		Name:           updatedUser.Name,
+		RoleID:         updatedUser.RoleID,
+		OrganizationID: updatedUser.OrganizationID,
+		CreatedAt:      updatedUser.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:      updatedUser.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 
 	w.Header().Set("Content-Type", "application/json")

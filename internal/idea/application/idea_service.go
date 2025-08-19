@@ -45,19 +45,18 @@ func NewIdeaApplicationService(ideaRepo ideadomain.Repository, userQueries queri
 }
 
 // CreateIdea creates a new idea with validation checks.
-// AI-hint: Idea creation with business rule enforcement.
-func (s *IdeaApplicationService) CreateIdea(ctx interface{}, title, content string, creatorUserID string) (*ideadomain.Idea, error) {
+// AI-hint: Idea creation with business rule enforcement and organization scoping.
+func (s *IdeaApplicationService) CreateIdea(ctx interface{}, title, content string, creatorUserID, organizationID uuid.UUID) (*ideadomain.Idea, error) {
 	context := ctx.(context.Context)
 
 	// Validate that the creator user exists using shared queries
-	_, err := s.userQueries.GetUserByID(context, creatorUserID)
+	_, err := s.userQueries.GetUserByID(context, creatorUserID.String())
 	if err != nil {
 		return nil, ideadomain.ErrCreatorNotFound
 	}
 
-	// Create the idea
-	creatorUUID := uuid.MustParse(creatorUserID)
-	newIdea, err := ideadomain.NewIdea(title, content, creatorUUID)
+	// Create the idea with organization scoping
+	newIdea, err := ideadomain.NewIdea(title, content, creatorUserID, organizationID)
 	if err != nil {
 		return nil, err
 	}

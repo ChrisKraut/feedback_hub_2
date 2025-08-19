@@ -36,6 +36,8 @@ func TestBaseDomainEvent(t *testing.T) {
 
 	t.Run("should generate unique event IDs", func(t *testing.T) {
 		event1 := NewBaseDomainEvent("test.event1", "test-1", 1)
+		// Add a small delay to ensure different timestamps
+		time.Sleep(time.Microsecond)
 		event2 := NewBaseDomainEvent("test.event2", "test-2", 1)
 
 		if event1.EventID() == event2.EventID() {

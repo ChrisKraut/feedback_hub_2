@@ -29,8 +29,9 @@ func NewIdeaHandler(ideaService *ideaapp.IdeaApplicationService) *IdeaHandler {
 // CreateIdeaRequest represents the request body for creating an idea.
 // AI-hint: DTO for idea creation API with validation-friendly structure.
 type CreateIdeaRequest struct {
-	Title   string `json:"title" example:"Improve user dashboard"`
-	Content string `json:"content" example:"The current dashboard could be enhanced with better data visualization and filtering options."`
+	Title          string `json:"title" example:"Improve user dashboard"`
+	Content        string `json:"content" example:"The current dashboard could be enhanced with better data visualization and filtering options."`
+	OrganizationID string `json:"organization_id" example:"550e8400-e29b-41d4-a716-446655440000"` // Organization scoping for multi-tenant support
 }
 
 // CreateIdeaResponse represents the response body for idea creation.
@@ -85,9 +86,25 @@ func (h *IdeaHandler) CreateIdea(w http.ResponseWriter, r *http.Request) {
 		web.WriteErrorResponse(w, http.StatusBadRequest, "Content is required")
 		return
 	}
+	if strings.TrimSpace(req.OrganizationID) == "" {
+		web.WriteErrorResponse(w, http.StatusBadRequest, "Organization ID is required")
+		return
+	}
+
+	// Parse UUIDs
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		web.WriteErrorResponse(w, http.StatusBadRequest, "Invalid user ID format")
+		return
+	}
+	organizationUUID, err := uuid.Parse(req.OrganizationID)
+	if err != nil {
+		web.WriteErrorResponse(w, http.StatusBadRequest, "Invalid organization ID format")
+		return
+	}
 
 	// Call the application service
-	newIdea, err := h.ideaService.CreateIdea(r.Context(), req.Title, req.Content, userID)
+	newIdea, err := h.ideaService.CreateIdea(r.Context(), req.Title, req.Content, userUUID, organizationUUID)
 	if err != nil {
 		switch err {
 		case ideadomain.ErrInvalidIdeaData:
