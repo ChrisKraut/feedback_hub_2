@@ -1,6 +1,6 @@
 basePath: /
 definitions:
-  http.AuthResponse:
+  interfaces.AuthResponse:
     properties:
       email:
         type: string
@@ -13,67 +13,136 @@ definitions:
       user_id:
         type: string
     type: object
-  http.CreateIdeaRequest:
+  interfaces.CreateIdeaRequest:
     properties:
       content:
         example: The current dashboard could be enhanced with better data visualization
           and filtering options.
         type: string
+      organization_id:
+        description: Organization scoping for multi-tenant support
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
       title:
         example: Improve user dashboard
         type: string
     type: object
-  http.CreateIdeaResponse:
+  interfaces.CreateIdeaResponse:
     properties:
       id:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
     type: object
-  http.CreateRoleRequest:
+  interfaces.CreateOrganizationRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      settings:
+        additionalProperties: true
+        type: object
+      slug:
+        type: string
+    required:
+    - name
+    type: object
+  interfaces.CreateOrganizationResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      settings:
+        additionalProperties: true
+        type: object
+      slug:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  interfaces.CreateRoleRequest:
     properties:
       name:
         type: string
+      organization_id:
+        description: Organization scoping for multi-tenant support
+        type: string
     type: object
-  http.CreateUserRequest:
+  interfaces.CreateUserRequest:
     properties:
       email:
         type: string
       name:
         type: string
+      organization_id:
+        description: Organization scoping for multi-tenant support
+        type: string
       role_id:
         type: string
     type: object
-  http.ErrorResponse:
+  interfaces.ErrorResponse:
     properties:
       error:
         type: string
       message:
         type: string
     type: object
-  http.HealthResponse:
+  interfaces.ListOrganizationsResponse:
     properties:
-      message:
-        type: string
-      status:
-        type: string
+      limit:
+        type: integer
+      offset:
+        type: integer
+      organizations:
+        items:
+          $ref: '#/definitions/interfaces.OrganizationResponse'
+        type: array
+      total:
+        type: integer
     type: object
-  http.LoginRequest:
+  interfaces.LoginRequest:
     properties:
       email:
         type: string
       password:
         type: string
     type: object
-  http.RegisterRequest:
+  interfaces.OrganizationResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      settings:
+        additionalProperties: true
+        type: object
+      slug:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  interfaces.RegisterRequest:
     properties:
       email:
         type: string
       name:
         type: string
+      organization_id:
+        description: Organization scoping for multi-tenant support
+        type: string
       password:
         type: string
     type: object
-  http.RoleResponse:
+  interfaces.RoleResponse:
     properties:
       created_at:
         type: string
@@ -81,10 +150,13 @@ definitions:
         type: string
       name:
         type: string
+      organization_id:
+        description: Organization scoping for multi-tenant support
+        type: string
       updated_at:
         type: string
     type: object
-  http.UpdateIdeaRequest:
+  interfaces.UpdateIdeaRequest:
     properties:
       content:
         example: The dashboard has been enhanced with better data visualization and
@@ -94,22 +166,34 @@ definitions:
         example: Improved user dashboard
         type: string
     type: object
-  http.UpdateRoleRequest:
+  interfaces.UpdateOrganizationRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      settings:
+        additionalProperties: true
+        type: object
+      slug:
+        type: string
+    type: object
+  interfaces.UpdateRoleRequest:
     properties:
       name:
         type: string
     type: object
-  http.UpdateUserRequest:
+  interfaces.UpdateUserRequest:
     properties:
       name:
         type: string
     type: object
-  http.UpdateUserRoleRequest:
+  interfaces.UpdateUserRoleRequest:
     properties:
       role_id:
         type: string
     type: object
-  http.UserResponse:
+  interfaces.UserResponse:
     properties:
       created_at:
         type: string
@@ -119,9 +203,19 @@ definitions:
         type: string
       name:
         type: string
+      organization_id:
+        description: Organization scoping for multi-tenant support
+        type: string
       role_id:
         type: string
       updated_at:
+        type: string
+    type: object
+  web.HealthResponse:
+    properties:
+      message:
+        type: string
+      status:
         type: string
     type: object
 info:
@@ -131,6 +225,34 @@ info:
   title: Feedback Hub API
   version: "1.0"
 paths:
+  /:
+    get:
+      description: Get basic API information and status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get API information
+      tags:
+      - root
+  /api/status:
+    get:
+      description: Get current API status and timestamp
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get API status
+      tags:
+      - status
   /auth/login:
     post:
       consumes:
@@ -143,26 +265,26 @@ paths:
         name: credentials
         required: true
         schema:
-          $ref: '#/definitions/http.LoginRequest'
+          $ref: '#/definitions/interfaces.LoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/http.AuthResponse'
+            $ref: '#/definitions/interfaces.AuthResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
       summary: User login
       tags:
       - auth
@@ -188,11 +310,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/http.AuthResponse'
+            $ref: '#/definitions/interfaces.AuthResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
       security:
       - JWTAuth: []
       summary: Get current user
@@ -209,26 +331,26 @@ paths:
         name: user
         required: true
         schema:
-          $ref: '#/definitions/http.RegisterRequest'
+          $ref: '#/definitions/interfaces.RegisterRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/http.AuthResponse'
+            $ref: '#/definitions/interfaces.AuthResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
       summary: User registration
       tags:
       - auth
@@ -239,7 +361,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/http.HealthResponse'
+            $ref: '#/definitions/web.HealthResponse'
       summary: Health check
       tags:
       - health
@@ -254,26 +376,26 @@ paths:
         name: idea
         required: true
         schema:
-          $ref: '#/definitions/http.CreateIdeaRequest'
+          $ref: '#/definitions/interfaces.CreateIdeaRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/http.CreateIdeaResponse'
+            $ref: '#/definitions/interfaces.CreateIdeaResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
       security:
       - JWTAuth: []
       summary: Create a new idea
@@ -297,7 +419,7 @@ paths:
         name: idea
         required: true
         schema:
-          $ref: '#/definitions/http.UpdateIdeaRequest'
+          $ref: '#/definitions/interfaces.UpdateIdeaRequest'
       produces:
       - application/json
       responses:
@@ -309,28 +431,257 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
       security:
       - JWTAuth: []
       summary: Update an existing idea
       tags:
       - ideas
+  /organizations:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a paginated list of organizations
+      parameters:
+      - description: 'Number of organizations to return (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of organizations to skip (default: 0)'
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/interfaces.ListOrganizationsResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/interfaces.ErrorResponse'
+      summary: List organizations
+      tags:
+      - organizations
+    post:
+      consumes:
+      - application/json
+      description: Create a new organization with the provided details
+      parameters:
+      - description: Organization details
+        in: body
+        name: organization
+        required: true
+        schema:
+          $ref: '#/definitions/interfaces.CreateOrganizationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/interfaces.CreateOrganizationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/interfaces.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/interfaces.ErrorResponse'
+      summary: Create a new organization
+      tags:
+      - organizations
+  /organizations/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an organization from the system
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/interfaces.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/interfaces.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/interfaces.ErrorResponse'
+      summary: Delete organization
+      tags:
+      - organizations
+    get:
+      consumes:
+      - application/json
+      description: Retrieve an organization by its unique identifier
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/interfaces.OrganizationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/interfaces.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/interfaces.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/interfaces.ErrorResponse'
+      summary: Get organization by ID
+      tags:
+      - organizations
+    put:
+      consumes:
+      - application/json
+      description: Update an existing organization with new details
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Organization update details
+        in: body
+        name: organization
+        required: true
+        schema:
+          $ref: '#/definitions/interfaces.UpdateOrganizationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/interfaces.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/interfaces.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/interfaces.ErrorResponse'
+      summary: Update organization
+      tags:
+      - organizations
+  /organizations/search:
+    get:
+      consumes:
+      - application/json
+      description: Search for organizations by name, description, or slug
+      parameters:
+      - description: Search query
+        in: query
+        name: q
+        type: string
+      - description: 'Number of organizations to return (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of organizations to skip (default: 0)'
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/interfaces.ListOrganizationsResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/interfaces.ErrorResponse'
+      summary: Search organizations
+      tags:
+      - organizations
+  /organizations/slug/{slug}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve an organization by its unique slug
+      parameters:
+      - description: Organization slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/interfaces.OrganizationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/interfaces.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/interfaces.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/interfaces.ErrorResponse'
+      summary: Get organization by slug
+      tags:
+      - organizations
   /roles:
     get:
       description: Get all roles in the system
@@ -341,16 +692,16 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/http.RoleResponse'
+              $ref: '#/definitions/interfaces.RoleResponse'
             type: array
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
       security:
       - JWTAuth: []
       summary: List all roles
@@ -366,34 +717,34 @@ paths:
         name: role
         required: true
         schema:
-          $ref: '#/definitions/http.CreateRoleRequest'
+          $ref: '#/definitions/interfaces.CreateRoleRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/http.RoleResponse'
+            $ref: '#/definitions/interfaces.RoleResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
       security:
       - JWTAuth: []
       summary: Create a new role
@@ -414,23 +765,23 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
       security:
       - JWTAuth: []
       summary: Delete a role
@@ -450,19 +801,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/http.RoleResponse'
+            $ref: '#/definitions/interfaces.RoleResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
       security:
       - JWTAuth: []
       summary: Get a role by ID
@@ -483,38 +834,38 @@ paths:
         name: role
         required: true
         schema:
-          $ref: '#/definitions/http.UpdateRoleRequest'
+          $ref: '#/definitions/interfaces.UpdateRoleRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/http.RoleResponse'
+            $ref: '#/definitions/interfaces.RoleResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
       security:
       - JWTAuth: []
       summary: Update a role
@@ -530,16 +881,16 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/http.UserResponse'
+              $ref: '#/definitions/interfaces.UserResponse'
             type: array
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
       security:
       - JWTAuth: []
       summary: List all users
@@ -555,34 +906,34 @@ paths:
         name: user
         required: true
         schema:
-          $ref: '#/definitions/http.CreateUserRequest'
+          $ref: '#/definitions/interfaces.CreateUserRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/http.UserResponse'
+            $ref: '#/definitions/interfaces.UserResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
       security:
       - JWTAuth: []
       summary: Create a new user
@@ -603,19 +954,19 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
       security:
       - JWTAuth: []
       summary: Delete a user
@@ -635,19 +986,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/http.UserResponse'
+            $ref: '#/definitions/interfaces.UserResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
       security:
       - JWTAuth: []
       summary: Get a user by ID
@@ -668,34 +1019,34 @@ paths:
         name: user
         required: true
         schema:
-          $ref: '#/definitions/http.UpdateUserRequest'
+          $ref: '#/definitions/interfaces.UpdateUserRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/http.UserResponse'
+            $ref: '#/definitions/interfaces.UserResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
       security:
       - JWTAuth: []
       summary: Update a user
@@ -717,34 +1068,34 @@ paths:
         name: role
         required: true
         schema:
-          $ref: '#/definitions/http.UpdateUserRoleRequest'
+          $ref: '#/definitions/interfaces.UpdateUserRoleRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/http.UserResponse'
+            $ref: '#/definitions/interfaces.UserResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/http.ErrorResponse'
+            $ref: '#/definitions/interfaces.ErrorResponse'
       security:
       - JWTAuth: []
       summary: Update a user's role
