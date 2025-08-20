@@ -102,7 +102,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/", s.rootHandler)
 	// AI-hint: Health endpoint for monitoring
 	mux.HandleFunc("/healthz", web.HealthHandler)
-	
+
 	// AI-hint: Basic API endpoints (placeholder for now)
 	mux.HandleFunc("/api/status", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -112,9 +112,91 @@ func (s *Server) Handler() http.Handler {
 
 	// AI-hint: Swagger endpoint temporarily disabled until docs are regenerated
 	mux.HandleFunc("/swagger/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusServiceUnavailable)
-		w.Write([]byte(`{"error":"Swagger documentation temporarily unavailable","message":"Documentation is being updated for the new API structure"}`))
+		// Check if they want the raw JSON or the UI
+		if r.URL.Query().Get("format") == "json" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{
+				"message": "API Documentation",
+				"status": "available",
+				"current_endpoints": [
+					{
+						"path": "/",
+						"method": "GET",
+						"description": "API root information and status"
+					},
+					{
+						"path": "/healthz",
+						"method": "GET", 
+						"description": "Health check endpoint"
+					},
+					{
+						"path": "/api/status",
+						"method": "GET",
+						"description": "API status and timestamp"
+					}
+				],
+				"note": "Swagger UI documentation is being updated for the new API structure. Use the endpoints above to interact with the API."
+			}`))
+			return
+		}
+
+		// Provide a nice HTML interface
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback Hub API Documentation</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; margin-bottom: 30px; }
+        .endpoint { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 20px; margin-bottom: 20px; }
+        .method { display: inline-block; background: #007bff; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-right: 10px; }
+        .path { font-family: monospace; font-size: 16px; color: #495057; }
+        .description { color: #6c757d; margin-top: 10px; }
+        .note { background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 6px; padding: 15px; margin-top: 20px; color: #856404; }
+        .json-link { margin-top: 20px; }
+        .json-link a { color: #007bff; text-decoration: none; }
+        .json-link a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Feedback Hub API Documentation</h1>
+        
+        <div class="endpoint">
+            <span class="method">GET</span>
+            <span class="path">/</span>
+            <div class="description">API root information and status</div>
+        </div>
+        
+        <div class="endpoint">
+            <span class="method">GET</span>
+            <span class="path">/healthz</span>
+            <div class="description">Health check endpoint for monitoring</div>
+        </div>
+        
+        <div class="endpoint">
+            <span class="method">GET</span>
+            <span class="path">/api/status</span>
+            <div class="description">API status and current timestamp</div>
+        </div>
+        
+        <div class="note">
+            <strong>Note:</strong> Swagger UI documentation is being updated for the new API structure. 
+            Use the endpoints above to interact with the API.
+        </div>
+        
+        <div class="json-link">
+            <a href="/swagger/?format=json">View API documentation as JSON</a>
+        </div>
+    </div>
+</body>
+</html>`))
 	})
 
 	// AI-hint: Return the configured mux
