@@ -12,7 +12,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 // Server represents a configured HTTP server with all dependencies initialized.
@@ -86,7 +85,7 @@ func (s *Server) Close() {
 func (s *Server) rootHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"message":"Feedback Hub API","version":"1.0","docs":"/swagger/","status":"initializing"}`))
+	w.Write([]byte(`{"message":"Feedback Hub API","version":"1.0","status":"ready","timestamp":"` + time.Now().Format(time.RFC3339) + `"}`))
 }
 
 // Handler creates and returns the complete HTTP handler for the application.
@@ -103,14 +102,19 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/", s.rootHandler)
 	// AI-hint: Health endpoint for monitoring
 	mux.HandleFunc("/healthz", web.HealthHandler)
-	// AI-hint: Swagger UI for API documentation
-	mux.Handle("/swagger/", httpSwagger.WrapHandler)
-
+	
 	// AI-hint: Basic API endpoints (placeholder for now)
 	mux.HandleFunc("/api/status", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"ok","message":"API is running","timestamp":"` + time.Now().Format(time.RFC3339) + `"}`))
+	})
+
+	// AI-hint: Swagger endpoint temporarily disabled until docs are regenerated
+	mux.HandleFunc("/swagger/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		w.Write([]byte(`{"error":"Swagger documentation temporarily unavailable","message":"Documentation is being updated for the new API structure"}`))
 	})
 
 	// AI-hint: Return the configured mux
