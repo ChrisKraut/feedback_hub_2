@@ -239,3 +239,74 @@ func (r *RoleRepository) EnsurePredefinedRoles(ctx interface{}) error {
 
 	return nil
 }
+
+// GetByOrganizationID retrieves all roles for a specific organization.
+// AI-hint: Organization-scoped role listing for multi-tenant applications.
+func (r *RoleRepository) GetByOrganizationID(ctx interface{}, organizationID string) ([]*roledomain.Role, error) {
+	context := ctx.(context.Context)
+
+	query := `
+		SELECT id, name, organization_id, created_at, updated_at
+		FROM roles
+		WHERE organization_id = $1
+		ORDER BY name
+	`
+
+	rows, err := r.pool.Query(context, query, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var roles []*roledomain.Role
+	for rows.Next() {
+		var roleEntity roledomain.Role
+		err := rows.Scan(
+			&roleEntity.ID,
+			&roleEntity.Name,
+			&roleEntity.OrganizationID,
+			&roleEntity.CreatedAt,
+			&roleEntity.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		roles = append(roles, &roleEntity)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return roles, nil
+}
+
+// GetByNameAndOrganization retrieves a role by name within a specific organization.
+// AI-hint: Organization-scoped role lookup for authorization and role management.
+func (r *RoleRepository) GetByNameAndOrganization(ctx interface{}, name, organizationID string) (*roledomain.Role, error) {
+	context := ctx.(context.Context)
+
+	query := `
+		SELECT id, name, organization_id, created_at, updated_at
+		FROM roles
+		WHERE name = $1 AND organization_id = $2
+	`
+
+	var roleEntity roledomain.Role
+	err := r.pool.QueryRow(context, query, name, organizationID).Scan(
+		&roleEntity.ID,
+		&roleEntity.Name,
+		&roleEntity.OrganizationID,
+		&roleEntity.CreatedAt,
+		&roleEntity.UpdatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, roledomain.ErrRoleNotFound
+		}
+		return nil, err
+	}
+
+	return &roleEntity, nil
+}

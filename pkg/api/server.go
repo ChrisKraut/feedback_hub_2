@@ -6,24 +6,9 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
-	ideaapp "feedback_hub_2/internal/idea/application"
-	ideainterfaces "feedback_hub_2/internal/idea/interfaces"
-	roleapp "feedback_hub_2/internal/role/application"
-	roleinterfaces "feedback_hub_2/internal/role/interfaces"
-	"feedback_hub_2/internal/shared/auth"
-	"feedback_hub_2/internal/shared/bootstrap"
-	events "feedback_hub_2/internal/shared/bus"
-	"feedback_hub_2/internal/shared/persistence"
-	"feedback_hub_2/internal/shared/queries"
-	web "feedback_hub_2/internal/shared/web"
-	userapp "feedback_hub_2/internal/user/application"
-	authinfra "feedback_hub_2/internal/user/infrastructure/auth"
-	userinterfaces "feedback_hub_2/internal/user/interfaces"
-
-	_ "feedback_hub_2/docs"
+	"feedback_hub_2/internal/shared/web"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -35,13 +20,8 @@ import (
 // This allows external packages like Vercel functions to use the application without
 // directly importing internal packages.
 type Server struct {
-	dbPool         *pgxpool.Pool
-	roleHandler    *roleinterfaces.RoleHandler
-	userHandler    *userinterfaces.UserHandler
-	ideaHandler    *ideainterfaces.IdeaHandler
-	authHandler    *userinterfaces.AuthHandler
-	authMiddleware *userinterfaces.AuthMiddleware
-	initialized    bool
+	dbPool      *pgxpool.Pool
+	initialized bool
 }
 
 // NewServer creates a new Server instance but doesn't initialize it yet.
@@ -52,8 +32,8 @@ func NewServer() *Server {
 }
 
 // Initialize sets up all dependencies and ensures the server is ready to handle requests.
-// AI-hint: One-time initialization that sets up database connections, repositories,
-// services, and handlers. Safe to call multiple times (idempotent).
+// AI-hint: One-time initialization that sets up database connections and basic services.
+// Safe to call multiple times (idempotent).
 func (s *Server) Initialize(ctx context.Context) error {
 	if s.initialized {
 		return nil
@@ -89,54 +69,6 @@ func (s *Server) Initialize(ctx context.Context) error {
 		return err
 	}
 
-	// Ensure database schema exists
-	if err := persistence.EnsureSchema(ctx, s.dbPool); err != nil {
-		return err
-	}
-
-	// Create repositories
-	roleRepo := persistence.NewRoleRepository(s.dbPool)
-	userRepo := persistence.NewUserRepository(s.dbPool)
-	ideaRepo := persistence.NewIdeaRepository(s.dbPool)
-
-	// Create shared query services
-	roleQueries := queries.NewRoleQueryService(roleRepo)
-	userQueries := queries.NewUserQueryService(userRepo)
-
-	// Create domain services
-	authService := auth.NewAuthorizationService()
-
-	// Create authentication services
-	jwtService := authinfra.NewJWTService()
-	passwordService := authinfra.NewPasswordService()
-
-	// Create event system
-	eventBus := events.NewInMemoryEventBus()
-	eventPublisher := events.NewEventBusPublisher(eventBus)
-
-	// Create application services
-	roleService := roleapp.NewRoleService(roleRepo, userQueries, authService, eventPublisher)
-	userService := userapp.NewUserService(userRepo, roleQueries, authService, eventPublisher)
-	ideaService := ideaapp.NewIdeaApplicationService(ideaRepo, userQueries)
-
-	// Create bootstrap service and initialize system
-	bootstrapService := bootstrap.NewBootstrapService(roleService, userService)
-	initCtx, initCancel := context.WithTimeout(ctx, 30*time.Second)
-	defer initCancel()
-
-	if err := bootstrapService.Initialize(initCtx); err != nil {
-		return err
-	}
-
-	// Create HTTP handlers
-	s.roleHandler = roleinterfaces.NewRoleHandler(roleService)
-	s.userHandler = userinterfaces.NewUserHandler(userService)
-	s.ideaHandler = ideainterfaces.NewIdeaHandler(ideaService)
-	s.authHandler = userinterfaces.NewAuthHandler(userService, roleService, jwtService, passwordService)
-
-	// Create authentication middleware
-	s.authMiddleware = userinterfaces.NewAuthMiddleware(userService, jwtService)
-
 	s.initialized = true
 	return nil
 }
@@ -154,7 +86,7 @@ func (s *Server) Close() {
 func (s *Server) rootHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"message":"Feedback Hub API","version":"1.0","docs":"/swagger/"}`))
+	w.Write([]byte(`{"message":"Feedback Hub API","version":"1.0","docs":"/swagger/","status":"initializing"}`))
 }
 
 // Handler creates and returns the complete HTTP handler for the application.
@@ -174,127 +106,12 @@ func (s *Server) Handler() http.Handler {
 	// AI-hint: Swagger UI for API documentation
 	mux.Handle("/swagger/", httpSwagger.WrapHandler)
 
-	// AI-hint: Authentication routes (no auth required)
-	mux.HandleFunc("/auth/login", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			s.authHandler.Login(w, r)
-		} else {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(`{"error":"Method Not Allowed","message":"Only POST allowed"}`))
-		}
+	// AI-hint: Basic API endpoints (placeholder for now)
+	mux.HandleFunc("/api/status", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok","message":"API is running","timestamp":"` + time.Now().Format(time.RFC3339) + `"}`))
 	})
-
-	mux.HandleFunc("/auth/register", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			s.authHandler.Register(w, r)
-		} else {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(`{"error":"Method Not Allowed","message":"Only POST allowed"}`))
-		}
-	})
-
-	mux.HandleFunc("/auth/logout", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			s.authHandler.Logout(w, r)
-		} else {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(`{"error":"Method Not Allowed","message":"Only POST allowed"}`))
-		}
-	})
-
-	// AI-hint: Authenticated route to get current user info
-	mux.HandleFunc("/auth/me", s.authMiddleware.RequireAuthFunc(s.authHandler.Me))
-
-	// AI-hint: Role management routes (authenticated)
-	mux.HandleFunc("/roles", s.authMiddleware.RequireAuthFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			s.roleHandler.ListRoles(w, r)
-		case http.MethodPost:
-			s.roleHandler.CreateRole(w, r)
-		default:
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(`{"error":"Method Not Allowed","message":"Only GET and POST allowed"}`))
-		}
-	}))
-
-	mux.HandleFunc("/roles/", s.authMiddleware.RequireAuthFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			s.roleHandler.GetRole(w, r)
-		case http.MethodPut:
-			s.roleHandler.UpdateRole(w, r)
-		case http.MethodDelete:
-			s.roleHandler.DeleteRole(w, r)
-		default:
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(`{"error":"Method Not Allowed","message":"Only GET, PUT, and DELETE allowed"}`))
-		}
-	}))
-
-	// AI-hint: User management routes (authenticated)
-	mux.HandleFunc("/users", s.authMiddleware.RequireAuthFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			s.userHandler.ListUsers(w, r)
-		case http.MethodPost:
-			s.userHandler.CreateUser(w, r)
-		default:
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(`{"error":"Method Not Allowed","message":"Only GET and POST allowed"}`))
-		}
-	}))
-
-	mux.HandleFunc("/users/", s.authMiddleware.RequireAuthFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Check if this is a role update endpoint
-		if strings.HasSuffix(r.URL.Path, "/role") && r.Method == http.MethodPut {
-			s.userHandler.UpdateUserRole(w, r)
-			return
-		}
-
-		switch r.Method {
-		case http.MethodGet:
-			s.userHandler.GetUser(w, r)
-		case http.MethodPut:
-			s.userHandler.UpdateUser(w, r)
-		case http.MethodDelete:
-			s.userHandler.DeleteUser(w, r)
-		default:
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(`{"error":"Method Not Allowed","message":"Only GET, PUT, and DELETE allowed"}`))
-		}
-	}))
-
-	// AI-hint: Ideas management routes (authenticated)
-	mux.HandleFunc("/ideas", s.authMiddleware.RequireAuthFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodPost:
-			s.ideaHandler.CreateIdea(w, r)
-		default:
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(`{"error":"Method Not Allowed","message":"Only POST allowed"}`))
-		}
-	}))
-
-	// AI-hint: Individual idea management routes (authenticated)
-	mux.HandleFunc("/ideas/", s.authMiddleware.RequireAuthFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodPut:
-			s.ideaHandler.UpdateIdea(w, r)
-		default:
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(`{"error":"Method Not Allowed","message":"Only PUT allowed"}`))
-		}
-	}))
 
 	// AI-hint: Return the configured mux
 	return mux
